@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUser, hasRole } from "@/lib/server/auth";
 import { createSlug } from "@/lib/server/slug";
 import { updateContentSchema } from "@/lib/validation/content";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_: NextRequest, context: RouteContext) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Belum login" }, { status: 401 });
   const { id } = await context.params;
   const data = await prisma.contentItem.findUnique({ where: { id } });
   if (!data) return NextResponse.json({ error: "Konten tidak ditemukan" }, { status: 404 });
@@ -15,6 +18,9 @@ export async function GET(_: NextRequest, context: RouteContext) {
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Belum login" }, { status: 401 });
+    if (!hasRole(user, ["SUPER_ADMIN", "EDITOR"])) return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
     const { id } = await context.params;
     const input = updateContentSchema.parse(await request.json());
     const current = await prisma.contentItem.findUnique({ where: { id } });
@@ -39,6 +45,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_: NextRequest, context: RouteContext) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Belum login" }, { status: 401 });
+  if (!hasRole(user, ["SUPER_ADMIN"])) return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   const { id } = await context.params;
   const existing = await prisma.contentItem.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: "Konten tidak ditemukan" }, { status: 404 });

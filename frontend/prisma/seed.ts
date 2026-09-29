@@ -1,4 +1,5 @@
 import { ContentKind, ContentStatus, PrismaClient } from "@prisma/client";
+import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -21,6 +22,21 @@ const items = [
 ] as const;
 
 async function main() {
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@konikonsel.id";
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) throw new Error("ADMIN_PASSWORD wajib diisi sebelum menjalankan seed");
+
+  await prisma.user.upsert({
+    where: { email: adminEmail.toLowerCase() },
+    update: { name: "Admin KONI", role: "SUPER_ADMIN", isActive: true },
+    create: {
+      name: "Admin KONI",
+      email: adminEmail.toLowerCase(),
+      passwordHash: await hash(adminPassword, 12),
+      role: "SUPER_ADMIN",
+    },
+  });
+
   await prisma.contentItem.createMany({
     data: items.map(([kind, slug, title, category, status], index) => ({
       kind,

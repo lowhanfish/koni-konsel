@@ -12,6 +12,7 @@ import { useContentList, useCreateContent, useDeleteContent } from "@/hooks/use-
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { contentStatuses, sectionKindMap, statusLabels, type ContentStatus } from "@/lib/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
+import { LogoutButton } from "./logout-button";
 
 const menus = [
   ["Dashboard", LayoutDashboard, "/admin"], ["Berita", Newspaper, "/admin/berita"],
@@ -111,6 +112,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
         <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span>{label === "Pesan Masuk" && <b>5</b>}</Link>)}</nav>
         <div className="admin-help"><CircleHelp /><strong>Butuh bantuan?</strong><span>Lihat panduan pengelolaan website.</span><button>Pusat Bantuan</button></div>
         <Link className="admin-back" href="/"><ArrowLeft /> Kembali ke Website</Link>
+        <LogoutButton />
       </aside>
 
       <section className="admin-main">

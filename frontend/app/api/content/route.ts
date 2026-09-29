@@ -2,11 +2,14 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUser, hasRole } from "@/lib/server/auth";
 import { createSlug } from "@/lib/server/slug";
 import { contentQuerySchema, createContentSchema } from "@/lib/validation/content";
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Belum login" }, { status: 401 });
     const query = contentQuerySchema.parse(Object.fromEntries(request.nextUrl.searchParams));
     const where: Prisma.ContentItemWhereInput = {
       kind: query.kind,
@@ -39,12 +42,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Belum login" }, { status: 401 });
+    if (!hasRole(user, ["SUPER_ADMIN", "EDITOR", "CONTRIBUTOR"])) {
+      return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
+    }
     const input = createContentSchema.parse(await request.json());
     const baseSlug = createSlug(input.slug || input.title);
     const duplicate = await prisma.contentItem.count({ where: { kind: input.kind, slug: baseSlug } });
     const slug = duplicate ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
-    const publishedAt = input.status === "PUBLISHED" ? input.publishedAt ?? new Date() : input.publishedAt;
-    const data = await prisma.contentItem.create({ data: { ...input, slug, publishedAt } });
+    const status = user.role === "CONTRIBUTOR" ? "DRAFT" : input.status;
+    const publishedAt = status === "PUBLISHED" ? input.publishedAt ?? new Date() : input.publishedAt;
+    const data = await prisma.contentItem.create({ data: { ...input, status, slug, publishedAt } });
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {

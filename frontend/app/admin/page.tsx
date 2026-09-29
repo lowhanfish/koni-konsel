@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { LogoutButton } from "./logout-button";
 
 const menus = [
   ["Dashboard", LayoutDashboard, "/admin"], ["Berita", Newspaper, "/admin/berita"], ["Program", CalendarDays, "/admin/program"],
@@ -58,6 +59,7 @@ export default function AdminPage() {
       <nav className="admin-nav" aria-label="Menu admin"><small>MENU UTAMA</small>{menus.slice(0,6).map(([label,Icon,href])=><Link className={active===label?"active":""} key={label} href={href}><Icon/><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label,Icon,href])=><Link className={active===label?"active":""} key={label} href={href}><Icon/><span>{label}</span>{label==="Pesan Masuk"&&<b>5</b>}</Link>)}</nav>
       <div className="admin-help"><CircleHelp/><strong>Butuh bantuan?</strong><span>Lihat panduan pengelolaan website.</span><button>Pusat Bantuan</button></div>
       <Link className="admin-back" href="/"><ArrowLeft/> Kembali ke Website</Link>
+      <LogoutButton />
     </aside>
 
     <section className="admin-main">
