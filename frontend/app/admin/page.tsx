@@ -3,12 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Activity, ArrowLeft, BarChart3, Bell, CalendarDays, CheckCircle2, ChevronDown,
+  ArrowLeft, Bell, CalendarDays, CheckCircle2, ChevronDown,
   CircleHelp, Dumbbell, Eye, FileText, GalleryHorizontal, LayoutDashboard,
   Mail, Medal, Menu, MoreHorizontal, Newspaper, Plus, Search, Settings,
-  Trophy, Upload, UserRound, Users, X,
+  Trophy, Upload, Users, X,
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 const menus = [
   ["Dashboard", LayoutDashboard, "/admin"], ["Berita", Newspaper, "/admin/berita"], ["Program", CalendarDays, "/admin/program"],
@@ -31,13 +32,14 @@ const activities = [
 ];
 
 export default function AdminPage() {
-  const [active, setActive] = useState("Dashboard");
+  const active = "Dashboard";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 350);
   const [toast, setToast] = useState("");
   const [posts, setPosts] = useState(initialPosts);
-  const filtered = useMemo(() => posts.filter((post) => post.title.toLowerCase().includes(query.toLowerCase())), [posts, query]);
+  const filtered = useMemo(() => posts.filter((post) => post.title.toLowerCase().includes(debouncedQuery.toLowerCase())), [posts, debouncedQuery]);
 
   function createPost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +64,7 @@ export default function AdminPage() {
       <header className="admin-topbar"><button className="admin-menu-button" onClick={()=>setSidebarOpen(true)} aria-label="Buka menu"><Menu/></button><label><Search/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Cari konten, atlet, atau pesan..."/></label><div className="admin-top-actions"><button aria-label="Notifikasi"><Bell/><i>3</i></button><span/><div className="admin-user"><div><strong>Admin KONI</strong><small>Super Administrator</small></div><b>AK</b><ChevronDown/></div></div></header>
 
       <div className="admin-content">
-        <div className="admin-welcome"><div><span>SELAMAT DATANG KEMBALI</span><h1>{active}</h1><p>{active === "Dashboard" ? "Pantau aktivitas dan kelola konten website KONI Konawe Selatan." : `Kelola data ${active.toLowerCase()} yang ditampilkan pada website publik.`}</p></div><div><button className="admin-outline"><Eye/> Lihat Website</button><button className="admin-primary" onClick={()=>setModalOpen(true)}><Plus/> Tambah Konten</button></div></div>
+        <div className="admin-welcome"><div><span>SELAMAT DATANG KEMBALI</span><h1>{active}</h1><p>Pantau aktivitas dan kelola konten website KONI Konawe Selatan.</p></div><div><button className="admin-outline"><Eye/> Lihat Website</button><button className="admin-primary" onClick={()=>setModalOpen(true)}><Plus/> Tambah Konten</button></div></div>
 
         <div className="admin-stats">
           {[[Newspaper,"48","Total Berita","+6 bulan ini","red"],[GalleryHorizontal,"286","Media Galeri","+24 bulan ini","gold"],[Medal,"74","Total Prestasi","+8 tahun ini","blue"],[Mail,"12","Pesan Masuk","5 belum dibaca","green"]].map(([Icon,value,label,note,color])=>{const I=Icon as typeof Newspaper;return <article key={String(label)}><div className={`stat-badge ${color}`}><I/></div><div><small>{String(label)}</small><strong>{String(value)}</strong><span>{String(note)}</span></div><MoreHorizontal/></article>})}
