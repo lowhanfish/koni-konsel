@@ -9,13 +9,16 @@ export const contentQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
 });
 
-export const createContentSchema = z.object({
-  kind: z.enum(contentKinds),
+export const contentFormSchema = z.object({
   title: z.string().trim().min(3).max(191),
-  slug: z.string().trim().min(1).max(191).optional(),
   category: z.string().trim().max(100).nullable().optional(),
   summary: z.string().trim().max(10_000).nullable().optional(),
   status: z.enum(contentStatuses).optional().default("DRAFT"),
+});
+
+export const createContentSchema = contentFormSchema.extend({
+  kind: z.enum(contentKinds),
+  slug: z.string().trim().min(1).max(191).optional(),
   metadata: z.record(z.string(), z.json()).optional(),
   publishedAt: z.coerce.date().nullable().optional(),
 });

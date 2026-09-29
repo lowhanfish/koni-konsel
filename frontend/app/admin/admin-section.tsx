@@ -4,13 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft, Bell, CalendarDays, Check, ChevronDown, CircleHelp, Download,
-  Dumbbell, GalleryHorizontal, LayoutDashboard, Mail, Menu, Newspaper, Plus,
-  Search, Settings, ShieldCheck, Trash2, Trophy, Users, X,
+  AlertTriangle, Dumbbell, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
+  Newspaper, Pencil, Plus, Search, Settings, ShieldCheck, Trash2, Trophy, Users, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useContentList, useCreateContent, useDeleteContent } from "@/hooks/use-content";
+import { useContentItem, useContentList, useCreateContent, useDeleteContent, useUpdateContent } from "@/hooks/use-content";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { contentStatuses, sectionKindMap, statusLabels, type ContentStatus } from "@/lib/content";
+import { contentStatuses, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
+import { contentFormSchema } from "@/lib/validation/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
 import { LogoutButton } from "./logout-button";
 
@@ -46,12 +48,19 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const kind = sectionKindMap[section];
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<ContentItem | null>(null);
+  const [previewId, setPreviewId] = useState<string>();
+  const [deleteCandidate, setDeleteCandidate] = useState<ContentItem | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState("");
   const { query, status, page, setQuery, setStatus, setPage, reset } = useAdminContentStore();
   const debouncedQuery = useDebouncedValue(query, 350);
   const content = useContentList({ kind, q: debouncedQuery, status: status === "ALL" ? undefined : status, page, pageSize: 8, enabled: Boolean(kind) });
   const createContent = useCreateContent();
+  const updateContent = useUpdateContent();
   const deleteContent = useDeleteContent();
+  const preview = useContentItem(previewId);
+  const currentUser = useCurrentUser();
 
   useEffect(() => reset(), [reset, section]);
 
@@ -64,6 +73,9 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const total = kind ? content.data?.meta.total ?? 0 : localRows.length;
   const stats = config.stats.map((entry, index) => index === 0 && kind ? [String(total), entry[1]] : entry);
   const Icon = config.icon;
+  const role = currentUser.data?.data.role;
+  const canEdit = role === "SUPER_ADMIN" || role === "EDITOR";
+  const canDelete = role === "SUPER_ADMIN";
 
   function showToast(message: string) {
     setToast(message);
@@ -78,30 +90,52 @@ export function AdminSection({ section }: { section: SectionKey }) {
       return;
     }
     const form = new FormData(event.currentTarget);
+    const input = {
+      title: String(form.get("title") || ""),
+      category: String(form.get("category") || "") || null,
+      status: String(form.get("status") || "DRAFT") as ContentStatus,
+      summary: String(form.get("summary") || "") || null,
+    };
+    const parsed = contentFormSchema.safeParse(input);
+    if (!parsed.success) {
+      const fields = parsed.error.flatten().fieldErrors;
+      setFormErrors(Object.fromEntries(Object.entries(fields).map(([name, messages]) => [name, messages?.[0] ?? "Data tidak valid"])));
+      return;
+    }
+    setFormErrors({});
     try {
-      await createContent.mutateAsync({
-        kind,
-        title: String(form.get("title")),
-        category: String(form.get("category") || "Umum"),
-        status: String(form.get("status") || "DRAFT") as ContentStatus,
-        summary: String(form.get("summary") || ""),
-      });
+      if (editing) await updateContent.mutateAsync({ id: editing.id, input: parsed.data });
+      else await createContent.mutateAsync({ kind, ...parsed.data });
       event.currentTarget.reset();
       setModal(false);
-      showToast(`${config.title} berhasil disimpan`);
+      setEditing(null);
+      showToast(`${config.title} berhasil ${editing ? "diperbarui" : "disimpan"}`);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal menyimpan konten");
     }
   }
 
-  async function remove(id: string, title: string) {
-    if (!window.confirm(`Hapus “${title}”? Tindakan ini tidak dapat dibatalkan.`)) return;
+  async function remove() {
+    if (!deleteCandidate) return;
     try {
-      await deleteContent.mutateAsync(id);
+      await deleteContent.mutateAsync(deleteCandidate.id);
+      setDeleteCandidate(null);
       showToast("Konten berhasil dihapus");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Gagal menghapus konten");
     }
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setFormErrors({});
+    setModal(true);
+  }
+
+  function openEdit(item: ContentItem) {
+    setEditing(item);
+    setFormErrors({});
+    setModal(true);
   }
 
   return (
@@ -116,9 +150,9 @@ export function AdminSection({ section }: { section: SectionKey }) {
       </aside>
 
       <section className="admin-main">
-        <header className="admin-topbar"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)}><Menu /></button><label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Cari ${config.title.toLowerCase()}...`} /></label><div className="admin-top-actions"><button><Bell /><i>3</i></button><span /><div className="admin-user"><div><strong>Admin KONI</strong><small>Super Administrator</small></div><b>AK</b><ChevronDown /></div></div></header>
+        <header className="admin-topbar"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)}><Menu /></button><label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Cari ${config.title.toLowerCase()}...`} /></label><div className="admin-top-actions"><button><Bell /><i>3</i></button><span /><div className="admin-user"><div><strong>{currentUser.data?.data.name ?? "Admin KONI"}</strong><small>{role?.replaceAll("_", " ") ?? "Memuat akun…"}</small></div><b>{(currentUser.data?.data.name ?? "AK").split(" ").map((word) => word[0]).join("").slice(0, 2)}</b><ChevronDown /></div></div></header>
         <div className="admin-content">
-          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div><button className="admin-outline"><Download /> Ekspor Data</button><button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Pengaturan berhasil disimpan") : setModal(true)}><Plus /> {config.button}</button></div></div>
+          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div><button className="admin-outline"><Download /> Ekspor Data</button><button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Pengaturan berhasil disimpan") : openCreate()}><Plus /> {config.button}</button></div></div>
           <div className="section-stat-grid">{stats.map(([value, label], index) => <article key={label}><span className={`section-stat-icon ssi-${index}`}><Icon /></span><div><strong>{value}</strong><small>{label}</small></div></article>)}</div>
 
           {section === "pengaturan" ? <SettingsPage onSave={() => showToast("Pengaturan berhasil disimpan")} /> : (
@@ -128,7 +162,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
                 {kind && content.isPending && <tr><td colSpan={6}>Memuat data…</td></tr>}
                 {kind && content.isError && <tr><td colSpan={6}>Gagal memuat data. Pastikan MySQL berjalan.</td></tr>}
                 {kind && !content.isPending && rows.length === 0 && <tr><td colSpan={6}>Belum ada data yang cocok.</td></tr>}
-                {kind ? contentRows.map((item, index) => <tr key={item.id}><td><div className="section-primary-cell"><span className={`row-avatar avatar-${index % 5}`}><Icon /></span><strong>{item.title}</strong></div></td><td>{item.category || "—"}</td><td>{formatDate(item.updatedAt)}</td><td><span className={item.status === "DRAFT" || item.status === "SCHEDULED" ? "status-draft" : "status-live"}><i />{statusLabels[item.status]}</span></td><td>{item.viewCount.toLocaleString("id-ID")}</td><td><button aria-label={`Hapus ${item.title}`} onClick={() => remove(item.id, item.title)} disabled={deleteContent.isPending}><Trash2 /></button></td></tr>) : localRows.map((row, index) => <tr key={row[0]}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cellIndex === 0 ? <div className="section-primary-cell"><span className={`row-avatar avatar-${index}`}><Icon /></span><strong>{cell}</strong></div> : cell}</td>)}<td>—</td></tr>)}
+                {kind ? contentRows.map((item, index) => <tr key={item.id}><td><div className="section-primary-cell"><span className={`row-avatar avatar-${index % 5}`}><Icon /></span><strong>{item.title}</strong></div></td><td>{item.category || "—"}</td><td>{formatDate(item.updatedAt)}</td><td><span className={item.status === "DRAFT" || item.status === "SCHEDULED" ? "status-draft" : "status-live"}><i />{statusLabels[item.status]}</span></td><td>{item.viewCount.toLocaleString("id-ID")}</td><td><div className="row-actions"><button aria-label={`Lihat ${item.title}`} onClick={() => setPreviewId(item.id)}><Eye /></button>{canEdit && <button aria-label={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil /></button>}{canDelete && <button aria-label={`Hapus ${item.title}`} onClick={() => setDeleteCandidate(item)}><Trash2 /></button>}</div></td></tr>) : localRows.map((row, index) => <tr key={row[0]}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cellIndex === 0 ? <div className="section-primary-cell"><span className={`row-avatar avatar-${index}`}><Icon /></span><strong>{cell}</strong></div> : cell}</td>)}<td>—</td></tr>)}
               </tbody></table></div>
               <div className="table-footer"><span>Menampilkan {rows.length} dari {total} data</span>{kind && <div><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1}>‹</button><button className="active">{page}</button><button onClick={() => setPage(page + 1)} disabled={page >= (content.data?.meta.pageCount ?? 1)}>›</button></div>}</div>
             </section>
@@ -136,7 +170,9 @@ export function AdminSection({ section }: { section: SectionKey }) {
         </div>
       </section>
 
-      {modal && <div className="admin-modal-backdrop"><form className="admin-modal section-modal" onSubmit={save}><div className="modal-head"><div><span><Icon /></span><div><h2>{config.button}</h2><p>Data akan disimpan ke database MySQL.</p></div></div><button type="button" onClick={() => setModal(false)}><X /></button></div><label>Nama atau judul<input name="title" required minLength={3} placeholder={`Masukkan ${config.title.toLowerCase()}`} /></label><div className="modal-row"><label>Kategori<input name="category" placeholder="Umum" /></label><label>Status<select name="status" defaultValue="DRAFT">{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></label></div><label>Deskripsi<textarea name="summary" rows={5} placeholder="Tambahkan deskripsi atau catatan..." /></label><div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={createContent.isPending}>{createContent.isPending ? "Menyimpan…" : "Simpan Data"}</button></div></form></div>}
+      {modal && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setModal(false)}><form key={editing?.id ?? "create"} className="admin-modal section-modal" onSubmit={save} noValidate><div className="modal-head"><div><span><Icon /></span><div><h2>{editing ? `Edit ${config.title}` : config.button}</h2><p>Data akan disimpan ke database MySQL.</p></div></div><button type="button" onClick={() => setModal(false)}><X /></button></div><label>Nama atau judul<input name="title" defaultValue={editing?.title} aria-invalid={Boolean(formErrors.title)} placeholder={`Masukkan ${config.title.toLowerCase()}`} />{formErrors.title && <small className="field-error">{formErrors.title}</small>}</label><div className="modal-row"><label>Kategori<input name="category" defaultValue={editing?.category ?? ""} aria-invalid={Boolean(formErrors.category)} placeholder="Umum" />{formErrors.category && <small className="field-error">{formErrors.category}</small>}</label><label>Status<select name="status" defaultValue={editing?.status ?? "DRAFT"}>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select>{formErrors.status && <small className="field-error">{formErrors.status}</small>}</label></div><label>Deskripsi<textarea name="summary" defaultValue={editing?.summary ?? ""} aria-invalid={Boolean(formErrors.summary)} rows={5} placeholder="Tambahkan deskripsi atau catatan..." />{formErrors.summary && <small className="field-error">{formErrors.summary}</small>}</label><div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={createContent.isPending || updateContent.isPending}>{createContent.isPending || updateContent.isPending ? "Menyimpan…" : editing ? "Simpan Perubahan" : "Simpan Data"}</button></div></form></div>}
+      {previewId && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPreviewId(undefined)}><section className="admin-modal detail-modal"><div className="modal-head"><div><span><Eye /></span><div><h2>Detail {config.title}</h2><p>Pratinjau data tersimpan.</p></div></div><button type="button" onClick={() => setPreviewId(undefined)}><X /></button></div>{preview.isPending ? <p>Memuat detail…</p> : preview.isError ? <p>Detail gagal dimuat.</p> : preview.data && <div className="detail-grid"><div><small>Judul</small><strong>{preview.data.data.title}</strong></div><div><small>Kategori</small><span>{preview.data.data.category || "—"}</span></div><div><small>Status</small><span>{statusLabels[preview.data.data.status]}</span></div><div><small>Slug</small><code>{preview.data.data.slug}</code></div><div className="detail-wide"><small>Deskripsi</small><p>{preview.data.data.summary || "Belum ada deskripsi."}</p></div><div><small>Dibuat</small><span>{formatDate(preview.data.data.createdAt)}</span></div><div><small>Diperbarui</small><span>{formatDate(preview.data.data.updatedAt)}</span></div></div>}</section></div>}
+      {deleteCandidate && <div className="admin-modal-backdrop"><section className="admin-modal confirm-modal"><span><AlertTriangle /></span><h2>Hapus konten?</h2><p>“{deleteCandidate.title}” akan dihapus permanen dan tidak dapat dipulihkan.</p><div className="modal-actions"><button type="button" onClick={() => setDeleteCandidate(null)}>Batal</button><button className="danger-button" type="button" onClick={remove} disabled={deleteContent.isPending}>{deleteContent.isPending ? "Menghapus…" : "Hapus Permanen"}</button></div></section></div>}
       {toast && <div className="admin-toast"><Check /><span>{toast}</span></div>}
     </main>
   );
