@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is the Next.js application for the KONI Konawe Selatan website.
+
+Backend architecture, local database setup, API contracts, and continuation notes are documented in [`docs/BACKEND_HANDOFF.md`](docs/BACKEND_HANDOFF.md).
 
 ## Getting Started
 
