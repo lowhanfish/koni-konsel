@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ContentKind {
+  NEWS
+  PROGRAM
+  SPORT_BRANCH
+  GALLERY
+  ACHIEVEMENT
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  SCHEDULED
+  ARCHIVED
+}
+
+model ContentItem {
+  id          String        @id @default(cuid())
+  kind        ContentKind
+  title       String
+  slug        String
+  category    String?
+  summary     String?       @db.Text
+  status      ContentStatus @default(DRAFT)
+  metadata    Json?
+  publishedAt DateTime?
+  viewCount   Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([kind, slug])
+  @@index([kind, status, createdAt])
+  @@index([kind, title])
+}

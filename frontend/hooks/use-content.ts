@@ -1,0 +1,50 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ContentItem, ContentKind, ContentListResponse, ContentStatus } from "@/lib/content";
+
+type ContentQuery = { kind?: ContentKind; q?: string; status?: ContentStatus; page?: number; pageSize?: number; enabled?: boolean };
+
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || "Permintaan gagal");
+  }
+  return response.json() as Promise<T>;
+}
+
+export function useContentList({ enabled = true, ...query }: ContentQuery) {
+  const params = new URLSearchParams();
+  if (query.kind) params.set("kind", query.kind);
+  if (query.q) params.set("q", query.q);
+  if (query.status) params.set("status", query.status);
+  params.set("page", String(query.page ?? 1));
+  params.set("pageSize", String(query.pageSize ?? 10));
+  return useQuery({
+    queryKey: ["content", query],
+    queryFn: () => request<ContentListResponse>(`/api/content?${params}`),
+    enabled,
+  });
+}
+
+type CreateContentInput = Pick<ContentItem, "kind" | "title" | "status"> & Partial<Pick<ContentItem, "category" | "summary">>;
+
+export function useCreateContent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateContentInput) => request<{ data: ContentItem }>("/api/content", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["content"] }),
+  });
+}
+
+export function useDeleteContent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/content/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Gagal menghapus konten");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["content"] }),
+  });
+}
