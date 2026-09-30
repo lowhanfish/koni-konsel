@@ -1,7 +1,26 @@
 "use client";
 
-import { CalendarDays, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, CalendarDays, Search } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { usePublicContent } from "@/hooks/use-public-content";
 import { PageHero, SiteShell } from "../components/site-chrome";
-const items=["KONI Konawe Selatan Lepas Kontingen ke Porprov Sultra 2024","Atlet Renang Konawe Selatan Raih Tiga Medali di Kejurprov","KONI Gelar Pelatihan Pelatih dan Official","Seleksi Atlet Sepak Bola Jelang Porprov 2024","Karateka Muda Konsel Tampil Gemilang di Kejurda","Rapat Koordinasi Cabang Olahraga Tahun 2024","Program Sport for All Hadir di Kecamatan Palangga","KONI Tinjau Kesiapan Sarana Latihan Atlet"];
-export default function BeritaPage(){const [query,setQuery]=useState("");const filtered=useMemo(()=>items.filter(item=>item.toLowerCase().includes(query.trim().toLowerCase())),[query]);const [featured,...articles]=filtered;return <SiteShell><PageHero eyebrow="KABAR TERKINI" title="Berita" accent="KONI" description="Informasi terbaru tentang atlet, kejuaraan, pembinaan, organisasi, dan perkembangan olahraga di Kabupaten Konawe Selatan."/><section className="inner-section"><div className="container"><div className="news-toolbar"><div><span className="mini-label">RUANG INFORMASI</span><h2>Kabar Terbaru</h2></div><label><Search/><input value={query} onChange={event=>setQuery(event.target.value)} aria-label="Cari berita" placeholder="Cari berita..."/></label></div>{featured?<><div className="featured-news"><div className="feature-image"/><div><span className="news-tag">BERITA UTAMA</span><small><CalendarDays/> 12 Agustus 2024</small><h2>{featured}</h2><p>Sebanyak 120 atlet terbaik Konawe Selatan resmi dilepas untuk membawa semangat daerah pada ajang olahraga tingkat provinsi.</p></div></div><div className="article-grid">{articles.map((title,i)=><article key={title}><div className="article-image" style={{backgroundPosition:`${16+i*13}% center`}}/><div><span className="news-tag">{i%2?"PEMBINAAN":"PRESTASI"}</span><small>0{8-i} Agustus 2024</small><h3>{title}</h3><p>Berita dan perkembangan terbaru olahraga Konawe Selatan.</p></div></article>)}</div></>:<p className="empty-state">Tidak ada berita yang cocok dengan pencarian “{query}”.</p>}</div></section></SiteShell>}
+
+function formatDate(value: string | null, fallback: string) {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(value ?? fallback));
+}
+
+export default function BeritaPage() {
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const news = usePublicContent({ kind: "NEWS", q: debouncedQuery, pageSize: 24 });
+  const [featured, ...articles] = news.data?.data ?? [];
+
+  return <SiteShell><PageHero eyebrow="KABAR TERKINI" title="Berita" accent="KONI" description="Informasi terbaru tentang atlet, kejuaraan, pembinaan, organisasi, dan perkembangan olahraga di Kabupaten Konawe Selatan."/><section className="inner-section"><div className="container"><div className="news-toolbar"><div><span className="mini-label">RUANG INFORMASI</span><h2>Kabar Terbaru</h2></div><label><Search/><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Cari berita" placeholder="Cari berita..."/></label></div>
+    {news.isPending && <p className="empty-state">Memuat berita…</p>}
+    {news.isError && <p className="empty-state">Berita belum dapat dimuat. Silakan coba kembali.</p>}
+    {!news.isPending && !news.isError && !featured && <p className="empty-state">Tidak ada berita yang cocok dengan pencarian “{query}”.</p>}
+    {featured && <><div className="featured-news"><div className="feature-image"/><div><span className="news-tag">{featured.category || "BERITA UTAMA"}</span><small><CalendarDays/> {formatDate(featured.publishedAt, featured.updatedAt)}</small><h2>{featured.title}</h2><p>{featured.summary || "Informasi terbaru KONI Kabupaten Konawe Selatan."}</p><Link href={`/berita/${featured.slug}`}>Baca selengkapnya <ArrowRight size={17}/></Link></div></div><div className="article-grid">{articles.map((item, index) => <article key={item.id}><div className="article-image" style={{backgroundPosition:`${16+index*13}% center`}}/><div><span className="news-tag">{item.category || "INFORMASI"}</span><small>{formatDate(item.publishedAt, item.updatedAt)}</small><h3>{item.title}</h3><p>{item.summary || "Berita dan perkembangan terbaru olahraga Konawe Selatan."}</p><Link href={`/berita/${item.slug}`} aria-label={`Baca ${item.title}`}><ArrowRight/></Link></div></article>)}</div></>}
+  </div></section></SiteShell>;
+}

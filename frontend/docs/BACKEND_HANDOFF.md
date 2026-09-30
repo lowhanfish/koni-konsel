@@ -1,6 +1,6 @@
 # Backend Handoff — KONI Konawe Selatan
 
-Dokumen ini adalah titik awal untuk melanjutkan pengembangan backend pada sesi berikutnya. Kondisi terakhir yang didokumentasikan: 29 September 2026, branch `main`.
+Dokumen ini adalah titik awal untuk melanjutkan pengembangan backend pada sesi berikutnya. Kondisi terakhir yang didokumentasikan: 1 Oktober 2026, branch `main`.
 
 ## Ringkasan arsitektur
 
@@ -55,7 +55,7 @@ Builder Webpack dipakai untuk verifikasi pada sesi implementasi karena Turbopack
 
 ## Model database
 
-Schema saat ini memiliki model `ContentItem`, `User`, dan `Session`. Model konten generik mendukung lima jenis konten:
+Schema saat ini memiliki model `ContentItem`, `User`, `Session`, `ContactMessage`, dan `SiteSetting`. Model konten generik mendukung lima jenis konten:
 
 - `NEWS`
 - `PROGRAM`
@@ -70,6 +70,8 @@ Field penting mencakup `title`, `slug`, `category`, `summary`, `metadata` JSON, 
 Seeder bersifat idempotent melalui `createMany({ skipDuplicates: true })` dan memasukkan tiga record untuk setiap jenis konten.
 
 `User` menyimpan identitas, hash password, role, status aktif, dan waktu login terakhir. `Session` menyimpan hash token, expiry tujuh hari, serta relasi cascade ke user. Session kedaluwarsa dibersihkan ketika session baru dibuat atau ketika token lama diperiksa.
+
+`ContactMessage` menyimpan formulir kontak publik dan status penanganannya. `SiteSetting` menyimpan satu konfigurasi identitas, alamat, kontak, serta kanal media sosial yang digunakan panel admin dan tampilan publik.
 
 ## HTTP API
 
@@ -97,6 +99,12 @@ Respons sukses:
 ```json
 { "status": "ok", "database": "connected" }
 ```
+
+### Konten publik
+
+`GET /api/public/content` menerima `kind`, `q`, `page`, dan `pageSize`. Endpoint ini tidak memerlukan session dan hanya mengembalikan konten dengan status `PUBLISHED` atau `ACTIVE`. Halaman berita, program, cabang olahraga, galeri, prestasi, serta beranda menggunakan endpoint ini.
+
+Detail berita publik tersedia di `/berita/:slug`; hanya konten terbit/aktif yang dapat dibuka dan setiap kunjungan menambah `viewCount`.
 
 ### Daftar dan pencarian konten
 
@@ -142,12 +150,20 @@ Slug dibuat otomatis dan diberi suffix jika terjadi duplikasi.
 
 `PATCH` menerima subset field create kecuali `kind`. Delete mengembalikan HTTP `204`.
 
+### Pesan, pengguna, dan pengaturan
+
+- `POST /api/contact` menerima pesan dari formulir kontak publik.
+- `/api/messages` menyediakan daftar pesan bagi admin; `/api/messages/:id` menangani perubahan status dan hapus.
+- `/api/users` menyediakan manajemen akun bagi `SUPER_ADMIN`, termasuk perlindungan akun sendiri dan super admin terakhir.
+- `GET /api/settings` membaca pengaturan website untuk tampilan publik, sedangkan `PATCH /api/settings` menyimpan perubahan khusus `SUPER_ADMIN`.
+
 ## Alur frontend
 
 File utama:
 
 - `app/providers.tsx`: satu `QueryClient` untuk aplikasi.
 - `hooks/use-content.ts`: query list/detail serta mutation create/edit/delete.
+- `hooks/use-public-content.ts`: query konten terbit untuk halaman publik.
 - `hooks/use-current-user.ts`: data user aktif untuk menyesuaikan aksi berdasarkan role.
 - `hooks/use-debounced-value.ts`: debounce generik 350 ms.
 - `stores/admin-content-store.ts`: state query, status, dan pagination.
@@ -158,28 +174,29 @@ TanStack Query memakai key `['content', query]`. Mutation create/edit/delete men
 
 Panel konten sekarang menyediakan create, preview detail, edit, dan dialog konfirmasi delete. Form create/edit menggunakan `contentFormSchema` yang sama dengan validasi server dan menampilkan error di field terkait. Dashboard `/admin` mengambil berita terbaru langsung dari API; pembuatan konten diarahkan ke halaman manajemen berita agar tidak ada state mock kedua.
 
+Panel pesan masuk, pengguna, dan pengaturan sudah memakai database. Seluruh tombol aksi yang tampil terhubung ke operasi nyata; pencarian hanya ditampilkan pada halaman yang mendukung pencarian.
+
 ## Yang sudah diuji
 
 - Koneksi MySQL dan health check.
 - Migrasi serta seed 15 record.
 - List dengan pencarian server-side.
-- Create, patch, dan delete end-to-end; record uji sudah dihapus.
+- Create, publish, tampil pada API/halaman publik, patch, dan delete end-to-end; record uji sudah dihapus.
 - Redirect halaman admin tanpa session, login bcrypt, cookie/session, akses API terautentikasi, logout, dan invalidasi session.
 - Validasi field invalid (HTTP 400), detail, update/publish, delete (HTTP 204), serta konfirmasi record terhapus (HTTP 404).
 - `npm run lint` tanpa warning/error.
 - Production build dengan `npx next build --webpack` berhasil.
+- `npm run audit:links` memastikan tautan internal tidak mengarah ke route yang hilang.
+- `npm run smoke:admin` memverifikasi autentikasi, CRUD/publikasi konten, pesan kontak, pengguna, pengaturan, logout, dan cleanup.
 
 ## Batasan dan pekerjaan berikutnya
 
-Fondasi CRUD aktif untuk lima tipe konten. Bagian berikut masih placeholder dan sebaiknya dikerjakan berurutan:
+Fondasi CRUD, inbox kontak, pengguna, pengaturan, serta publikasi konten sudah aktif. Pekerjaan lanjutan yang disarankan:
 
-1. Buat manajemen akun admin (undang user, ganti role, nonaktifkan, reset password) khusus `SUPER_ADMIN`.
-2. Buat model khusus `ContactMessage`, `SiteSetting`, serta media/file.
-3. Hubungkan halaman publik ke data Prisma dan hanya tampilkan konten terbit/aktif.
-4. Implementasikan upload melalui object storage, bukan menyimpan file besar di database.
-5. Tambahkan rate limiting login, rotasi session, audit log, dan proteksi CSRF eksplisit sebelum production.
-6. Tambahkan integration test otomatis untuk Route Handlers dan komponen admin.
-7. Pertimbangkan model domain terpisah ketika field program, cabor, galeri, atau prestasi sudah final; `metadata` JSON hanya jembatan awal.
+1. Implementasikan upload melalui object storage, bukan menyimpan file besar di database.
+2. Tambahkan rate limiting login dan formulir kontak, rotasi session, audit log, dan proteksi CSRF eksplisit sebelum production.
+3. Tambahkan integration test otomatis untuk Route Handlers dan komponen admin sebagai pelengkap smoke test.
+4. Pertimbangkan model domain terpisah ketika field program, cabor, galeri, atau prestasi sudah final; `metadata` JSON hanya jembatan awal.
 
 ## Catatan dependency
 
@@ -190,5 +207,10 @@ Fondasi CRUD aktif untuk lima tipe konten. Bagian berikut masih placeholder dan 
 - `dd73041` — Prisma schema, migration, seed, API, provider, hooks, dan store.
 - `f72b335` — Integrasi panel admin, TanStack Query, Zustand, dan debounce.
 - `83df101` — Login/logout, session database, proteksi admin/API, dan role-based access.
+- `d2663a5` — Audit dan perbaikan navigasi publik.
+- `752d41a` — Penguatan alur konten admin dan smoke test.
+- `b2c108e` — Formulir kontak publik dan kotak masuk admin.
+- `c69b330` — Manajemen akun admin.
+- `ea69d4c` — Pengaturan website persisten dan integrasi tampilan publik.
 
 Setelah perubahan berikutnya selesai dan lolos verifikasi, commit kecil per milestone lalu push ke `origin/main`.

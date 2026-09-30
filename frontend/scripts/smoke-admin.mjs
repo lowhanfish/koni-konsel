@@ -54,21 +54,28 @@ try {
   const list = await request("/api/content?kind=NEWS&page=1&pageSize=1");
   assert(list.response.ok && list.body?.meta?.statusCounts, `Daftar konten gagal (${list.response.status})`);
 
+  const contentTitle = `Smoke Test Admin ${Date.now()}`;
   const create = await request("/api/content", {
     method: "POST",
-    body: JSON.stringify({ kind: "NEWS", title: `Smoke Test Admin ${Date.now()}`, category: "Pengujian", summary: "Record sementara untuk verifikasi CRUD.", status: "DRAFT" }),
+    body: JSON.stringify({ kind: "NEWS", title: contentTitle, category: "Pengujian", summary: "Record sementara untuk verifikasi CRUD.", status: "DRAFT" }),
   });
   assert(create.response.status === 201 && create.body?.data?.id, `Create gagal (${create.response.status})`);
   createdId = create.body.data.id;
 
   const update = await request(`/api/content/${createdId}`, {
     method: "PATCH",
-    body: JSON.stringify({ summary: "Record sementara berhasil diperbarui." }),
+    body: JSON.stringify({ summary: "Record sementara berhasil diperbarui.", status: "PUBLISHED" }),
   });
   assert(update.response.ok && update.body?.data?.summary.includes("diperbarui"), `Update gagal (${update.response.status})`);
 
   const detail = await request(`/api/content/${createdId}`);
   assert(detail.response.ok && detail.body?.data?.id === createdId, `Detail gagal (${detail.response.status})`);
+
+  const publicList = await request(`/api/public/content?kind=NEWS&q=${encodeURIComponent(contentTitle)}&page=1&pageSize=10`);
+  assert(publicList.response.ok && publicList.body?.data?.some((item) => item.id === createdId), `Publikasi konten gagal (${publicList.response.status})`);
+
+  const publicDetail = await fetch(`${baseUrl}/berita/${create.body.data.slug}`);
+  assert(publicDetail.ok && (await publicDetail.text()).includes(contentTitle), `Halaman detail publik gagal (${publicDetail.status})`);
 
   const remove = await request(`/api/content/${createdId}`, { method: "DELETE" });
   assert(remove.response.status === 204, `Delete gagal (${remove.response.status})`);
@@ -126,7 +133,7 @@ try {
   const logout = await request("/api/auth/logout", { method: "POST" });
   assert(logout.response.ok, `Logout gagal (${logout.response.status})`);
 
-  console.log("Smoke test admin lulus: autentikasi, CRUD konten, formulir kontak, kotak masuk, pengguna, pengaturan, dan logout.");
+  console.log("Smoke test admin lulus: autentikasi, CRUD dan publikasi konten, formulir kontak, kotak masuk, pengguna, pengaturan, dan logout.");
 } finally {
   if (createdId) await request(`/api/content/${createdId}`, { method: "DELETE" }).catch(() => undefined);
   if (createdMessageId) await request(`/api/messages/${createdMessageId}`, { method: "DELETE" }).catch(() => undefined);

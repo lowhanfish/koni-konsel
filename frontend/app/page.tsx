@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { fallbackSettings, useSettings } from "@/hooks/use-settings";
+import { usePublicContent } from "@/hooks/use-public-content";
 
 const quickLinks = [
   { icon: Users, title: "Profil KONI", text: "Sejarah, visi, misi dan struktur organisasi", href: "/profil" },
@@ -65,8 +66,20 @@ export default function Home() {
   const [galleryFilter, setGalleryFilter] = useState("Semua");
   const settingsQuery = useSettings();
   const settings = settingsQuery.data?.data ?? fallbackSettings;
+  const programContent = usePublicContent({ kind: "PROGRAM", pageSize: 5 });
+  const branchContent = usePublicContent({ kind: "SPORT_BRANCH", pageSize: 12 });
+  const newsContent = usePublicContent({ kind: "NEWS", pageSize: 4 });
+  const galleryContent = usePublicContent({ kind: "GALLERY", pageSize: 11 });
+  const achievementContent = usePublicContent({ kind: "ACHIEVEMENT", pageSize: 100 });
   const socialLinks = [[settings.facebookUrl, MessageCircle, "Facebook"], [settings.instagramUrl, Camera, "Instagram"], [settings.youtubeUrl, Video, "YouTube"]] as const;
   const hasSocialLinks = socialLinks.some(([url]) => Boolean(url));
+  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: item.summary || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%` })) : programs;
+  const sportCards = branchContent.data ? branchContent.data.data.map((item, index) => ({ icon: sports[index % sports.length].icon, name: item.title })) : sports;
+  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: item.summary || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
+  const galleryItems = galleryContent.data ? galleryContent.data.data : [];
+  const galleryFilterOptions = galleryContent.data ? ["Semua", ...new Set(galleryItems.map((item) => item.category).filter((value): value is string => Boolean(value)))] : galleryFilters;
+  const achievements = achievementContent.data?.data ?? [];
+  const achievementCategories = new Set(achievements.map((item) => item.category).filter(Boolean)).size;
 
   return (
     <main id="beranda">
@@ -130,27 +143,27 @@ export default function Home() {
 
       <section className="section" id="program"><div className="container">
         <div className="title-row"><SectionTitle note="Berbagai program strategis untuk mendukung pembinaan atlet, pengembangan cabang olahraga, dan peningkatan prestasi olahraga di Konawe Selatan.">PROGRAM UNGGULAN</SectionTitle><Link className="outline-link" href="/program">Lihat Semua Program <ArrowRight size={16} /></Link></div>
-        <div className="program-grid">{programs.map((program) => <article className="program-card" key={program.title}><div className="sports-image" style={{ backgroundPosition: `${program.position} center` }} /><div><h3>{program.title}</h3><p>{program.text}</p></div></article>)}</div>
+        <div className="program-grid">{programCards.map((program) => <article className="program-card" key={program.title}><div className="sports-image" style={{ backgroundPosition: `${program.position} center` }} /><div><h3>{program.title}</h3><p>{program.text}</p></div></article>)}</div>
       </div></section>
 
       <section className="section sports-section" id="cabor"><div className="container">
         <div className="title-row"><SectionTitle>CABANG OLAHRAGA</SectionTitle><Link className="outline-link" href="/cabang-olahraga">Lihat Semua Cabor <ArrowRight size={16} /></Link></div>
-        <div className="sport-list">{sports.map(({ icon: Icon, name }, index) => <Link href="/cabang-olahraga" className="sport-item" key={name}><span className={`sport-icon sport-${index % 5}`}><Icon size={27} /></span><small>{name}</small></Link>)}</div>
+        <div className="sport-list">{sportCards.map(({ icon: Icon, name }, index) => <Link href="/cabang-olahraga" className="sport-item" key={name}><span className={`sport-icon sport-${index % 5}`}><Icon size={27} /></span><small>{name}</small></Link>)}</div>
       </div></section>
 
       <section className="section achievement-section" id="prestasi"><div className="container">
         <div className="title-row"><SectionTitle note="Capaian membanggakan atlet Konawe Selatan di berbagai ajang kejuaraan.">PRESTASI</SectionTitle><Link className="outline-link" href="/prestasi">Lihat Semua Prestasi <ArrowRight size={16} /></Link></div>
-        <div className="achievement-banner"><div className="stats">{[[Trophy, "24", "Emas"], [Medal, "18", "Perak"], [Medal, "32", "Perunggu"], [Users, "74", "Total Medali"]].map(([Icon, number, label]) => { const StatIcon = Icon as typeof Trophy; return <div className="stat" key={String(label)}><StatIcon /><strong>{String(number)}</strong><span>{String(label)}</span></div>; })}</div><div className="achievement-copy"><small>Atlet Konawe Selatan</small><strong>Menuju Prestasi</strong><em>Lebih Tinggi!</em></div></div>
+        <div className="achievement-banner"><div className="stats">{[[Trophy, String(achievements.length), "Prestasi"], [Medal, String(achievementCategories), "Cabang"], [Users, String(achievementContent.data?.meta.total ?? 0), "Publikasi"]].map(([Icon, number, label]) => { const StatIcon = Icon as typeof Trophy; return <div className="stat" key={String(label)}><StatIcon /><strong>{String(number)}</strong><span>{String(label)}</span></div>; })}</div><div className="achievement-copy"><small>Atlet Konawe Selatan</small><strong>Menuju Prestasi</strong><em>Lebih Tinggi!</em></div></div>
       </div></section>
 
       <section className="section" id="berita"><div className="container">
         <div className="title-row"><SectionTitle>BERITA TERBARU</SectionTitle><Link className="outline-link" href="/berita">Lihat Semua Berita <ArrowRight size={16} /></Link></div>
-        <div className="news-grid">{news.map((item) => <article className="news-card" key={item.title}><div className="sports-image news-image" style={{ backgroundPosition: `${item.position} center` }} /><div className="news-body"><time>{item.date}</time><h3>{item.title}</h3><p>{item.excerpt}</p><Link href="/berita" aria-label={`Lihat daftar berita untuk ${item.title}`}><ArrowRight size={18} /></Link></div></article>)}</div>
+        <div className="news-grid">{newsCards.map((item) => <article className="news-card" key={item.title}><div className="sports-image news-image" style={{ backgroundPosition: `${item.position} center` }} /><div className="news-body"><time>{item.date}</time><h3>{item.title}</h3><p>{item.excerpt}</p><Link href={item.href} aria-label={`Baca ${item.title}`}><ArrowRight size={18} /></Link></div></article>)}</div>
       </div></section>
 
       <section className="section gallery-section" id="galeri"><div className="container">
-        <div className="gallery-head"><SectionTitle>GALERI KEGIATAN</SectionTitle><div className="filter-list">{galleryFilters.map((filter) => <button key={filter} className={galleryFilter === filter ? "active" : ""} onClick={() => setGalleryFilter(filter)}>{filter}</button>)}</div></div>
-        <div className="gallery-grid">{[8, 22, 39, 56, 68, 79, 91, 14, 31, 48, 63].map((position, index) => <div className={`gallery-item item-${index}`} key={`${galleryFilter}-${index}`}><div className="sports-image" style={{ backgroundPosition: `${position}% center` }} />{index === 0 && <span className="gallery-badge"><Play size={15} fill="currentColor" /> Pilihan</span>}</div>)}<Link className="gallery-more" href="/galeri"><Images size={32} /><span>Lihat<br />Lebih Banyak</span><ArrowRight size={20} /></Link></div>
+        <div className="gallery-head"><SectionTitle>GALERI KEGIATAN</SectionTitle><div className="filter-list">{galleryFilterOptions.map((filter) => <button key={filter} className={galleryFilter === filter ? "active" : ""} onClick={() => setGalleryFilter(filter)}>{filter}</button>)}</div></div>
+        <div className="gallery-grid">{galleryItems.filter((item) => galleryFilter === "Semua" || item.category === galleryFilter).map((item, index) => <div className={`gallery-item item-${index}`} key={item.id} title={item.title}><div className="sports-image" style={{ backgroundPosition: `${8 + index * 9}% center` }} />{index === 0 && <span className="gallery-badge"><Play size={15} fill="currentColor" /> Pilihan</span>}</div>)}<Link className="gallery-more" href="/galeri"><Images size={32} /><span>Lihat<br />Lebih Banyak</span><ArrowRight size={20} /></Link></div>
       </div></section>
 
       <section className="join-section"><div className="container join-inner"><div><h2>BERSAMA MEMAJUKAN<br />OLAHRAGA KONAWE SELATAN</h2><p>Mari bersinergi untuk mencetak lebih banyak atlet berprestasi dan mewujudkan Konawe Selatan yang sehat, maju, dan membanggakan.</p></div><Link className="button button-gold" href="/kontak">Bergabung Bersama Kami <ArrowRight size={17} /></Link></div></section>
