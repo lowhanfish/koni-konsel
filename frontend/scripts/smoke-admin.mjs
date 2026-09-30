@@ -9,6 +9,7 @@ if (!email || !password) {
 let cookie = "";
 let createdId = "";
 let createdMessageId = "";
+let createdUserId = "";
 
 async function request(path, init = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -80,11 +81,30 @@ try {
   assert(deleteMessage.response.status === 204, `Hapus pesan gagal (${deleteMessage.response.status})`);
   createdMessageId = "";
 
+  const userEmail = `smoke-${Date.now()}@example.com`;
+  const createUser = await request("/api/users", { method: "POST", body: JSON.stringify({ name: "Pengguna Smoke", email: userEmail, password: "SmokeTest!123", role: "EDITOR", isActive: true }) });
+  assert(createUser.response.status === 201 && createUser.body?.data?.id, `Buat pengguna gagal (${createUser.response.status})`);
+  createdUserId = createUser.body.data.id;
+
+  const users = await request(`/api/users?q=${encodeURIComponent(userEmail)}&page=1&pageSize=10`);
+  assert(users.response.ok && users.body?.data?.some((user) => user.id === createdUserId), `Daftar pengguna gagal (${users.response.status})`);
+
+  const updateUser = await request(`/api/users/${createdUserId}`, { method: "PATCH", body: JSON.stringify({ name: "Pengguna Smoke Diperbarui", isActive: false }) });
+  assert(updateUser.response.ok && updateUser.body?.data?.isActive === false, `Update pengguna gagal (${updateUser.response.status})`);
+
+  const selfDelete = await request(`/api/users/${login.body.data.id}`, { method: "DELETE" });
+  assert(selfDelete.response.status === 400, `Proteksi hapus akun sendiri gagal (${selfDelete.response.status})`);
+
+  const deleteUser = await request(`/api/users/${createdUserId}`, { method: "DELETE" });
+  assert(deleteUser.response.status === 204, `Hapus pengguna gagal (${deleteUser.response.status})`);
+  createdUserId = "";
+
   const logout = await request("/api/auth/logout", { method: "POST" });
   assert(logout.response.ok, `Logout gagal (${logout.response.status})`);
 
-  console.log("Smoke test admin lulus: autentikasi, CRUD konten, formulir kontak, kotak masuk, dan logout.");
+  console.log("Smoke test admin lulus: autentikasi, CRUD konten, formulir kontak, kotak masuk, pengguna, dan logout.");
 } finally {
   if (createdId) await request(`/api/content/${createdId}`, { method: "DELETE" }).catch(() => undefined);
   if (createdMessageId) await request(`/api/messages/${createdMessageId}`, { method: "DELETE" }).catch(() => undefined);
+  if (createdUserId) await request(`/api/users/${createdUserId}`, { method: "DELETE" }).catch(() => undefined);
 }

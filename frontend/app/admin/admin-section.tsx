@@ -17,6 +17,7 @@ import { contentFormSchema } from "@/lib/validation/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
 import { LogoutButton } from "./logout-button";
 import { MessagesPanel } from "./messages-panel";
+import { UsersPanel } from "./users-panel";
 
 const menus = [
   ["Dashboard", LayoutDashboard, "/admin"], ["Berita", Newspaper, "/admin/berita"],
@@ -37,7 +38,7 @@ const configs: Record<SectionKey, {
   galeri: { title: "Galeri", description: "Kelola album, foto, dan video dokumentasi kegiatan KONI.", button: "Tambah Album", icon: GalleryHorizontal, stats: [["0", "Total album"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   prestasi: { title: "Prestasi", description: "Catat medali, kejuaraan, atlet berprestasi, dan pencapaian kontingen.", button: "Tambah Prestasi", icon: Trophy, stats: [["0", "Total prestasi"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   "pesan-masuk": { title: "Pesan Masuk", description: "Tinjau pertanyaan, permohonan informasi, dan pesan dari pengunjung.", button: "", icon: Mail, stats: [], rows: [] },
-  pengguna: { title: "Pengguna", description: "Kelola akun, peran, dan hak akses tim pengelola website.", button: "Tambah Pengguna", icon: Users, stats: [["8", "Total pengguna"], ["3", "Administrator"], ["4", "Editor"], ["1", "Kontributor"]], rows: [["Admin KONI", "admin@konikonsel.id", "Super Admin", "Sekarang", "Aktif"], ["Humas KONI", "humas@konikonsel.id", "Editor", "5 hari lalu", "Aktif"]] },
+  pengguna: { title: "Pengguna", description: "Kelola akun, peran, dan hak akses tim pengelola website.", button: "", icon: Users, stats: [], rows: [] },
   pengaturan: { title: "Pengaturan", description: "Atur identitas website, kontak, media sosial, dan preferensi publikasi.", button: "Simpan Perubahan", icon: Settings, stats: [["8", "Menu publik"], ["2", "Logo aktif"], ["4", "Kanal sosial"], ["100%", "Profil lengkap"]], rows: [] },
 };
 
@@ -195,10 +196,10 @@ export function AdminSection({ section }: { section: SectionKey }) {
       <section className="admin-main">
         <header className="admin-topbar"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Buka menu"><Menu /></button><label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Cari ${config.title.toLowerCase()}...`} /></label><div className="admin-top-actions"><div className="admin-user"><div><strong>{currentUser.data?.data.name ?? "Admin KONI"}</strong><small>{role?.replaceAll("_", " ") ?? "Memuat akun…"}</small></div><b>{(currentUser.data?.data.name ?? "AK").split(" ").map((word) => word[0]).join("").slice(0, 2)}</b></div></div></header>
         <div className="admin-content">
-          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div>{kind && <button className="admin-outline" onClick={exportData}><Download /> Ekspor Data</button>}{section !== "pesan-masuk" && <button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Gunakan formulir pengaturan di bawah") : openCreate()}><Plus /> {config.button}</button>}</div></div>
-          {section !== "pesan-masuk" && <div className="section-stat-grid">{stats.map(([value, label], index) => <article key={label}><span className={`section-stat-icon ssi-${index}`}><Icon /></span><div><strong>{value}</strong><small>{label}</small></div></article>)}</div>}
+          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div>{kind && <button className="admin-outline" onClick={exportData}><Download /> Ekspor Data</button>}{!(["pesan-masuk", "pengguna"] as SectionKey[]).includes(section) && <button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Gunakan formulir pengaturan di bawah") : openCreate()}><Plus /> {config.button}</button>}</div></div>
+          {!(["pesan-masuk", "pengguna"] as SectionKey[]).includes(section) && <div className="section-stat-grid">{stats.map(([value, label], index) => <article key={label}><span className={`section-stat-icon ssi-${index}`}><Icon /></span><div><strong>{value}</strong><small>{label}</small></div></article>)}</div>}
 
-          {section === "pesan-masuk" ? <MessagesPanel key={debouncedQuery} query={debouncedQuery} canDelete={canDelete} showToast={showToast} /> : section === "pengaturan" ? <SettingsPage onSave={() => showToast("Pengaturan berhasil disimpan")} /> : (
+          {section === "pesan-masuk" ? <MessagesPanel key={debouncedQuery} query={debouncedQuery} canDelete={canDelete} showToast={showToast} /> : section === "pengguna" ? <UsersPanel key={debouncedQuery} query={debouncedQuery} allowed={role === "SUPER_ADMIN"} currentUserId={currentUser.data?.data.id} showToast={showToast} /> : section === "pengaturan" ? <SettingsPage onSave={() => showToast("Pengaturan berhasil disimpan")} /> : (
             <section className="admin-panel section-table-panel">
               <div className="panel-head"><div><h2>Daftar {config.title}</h2><p>{total} data ditemukan{query !== debouncedQuery ? " · mencari…" : ""}</p></div><div className="section-filters"><select value={status} onChange={(event) => setStatus(event.target.value as ContentStatus | "ALL")} disabled={!kind}><option value="ALL">Semua Status</option>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></div></div>
               <div className="admin-table-wrap"><table><thead><tr><th>JUDUL / NAMA</th><th>KATEGORI</th><th>DIPERBARUI</th><th>STATUS</th><th>DILIHAT</th><th /></tr></thead><tbody>
