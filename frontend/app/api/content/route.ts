@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
         ? { OR: [{ title: { contains: query.q } }, { category: { contains: query.q } }, { summary: { contains: query.q } }] }
         : {}),
     };
-    const [data, total] = await prisma.$transaction([
+    const statusWhere = (status: "DRAFT" | "PUBLISHED" | "ACTIVE" | "SCHEDULED" | "ARCHIVED") => ({ kind: query.kind, status });
+    const [data, total, draft, published, active, scheduled, archived] = await prisma.$transaction([
       prisma.contentItem.findMany({
         where,
         orderBy: { updatedAt: "desc" },
@@ -26,10 +27,16 @@ export async function GET(request: NextRequest) {
         take: query.pageSize,
       }),
       prisma.contentItem.count({ where }),
+      prisma.contentItem.count({ where: statusWhere("DRAFT") }),
+      prisma.contentItem.count({ where: statusWhere("PUBLISHED") }),
+      prisma.contentItem.count({ where: statusWhere("ACTIVE") }),
+      prisma.contentItem.count({ where: statusWhere("SCHEDULED") }),
+      prisma.contentItem.count({ where: statusWhere("ARCHIVED") }),
     ]);
+    const statusCounts = { DRAFT: draft, PUBLISHED: published, ACTIVE: active, SCHEDULED: scheduled, ARCHIVED: archived };
     return NextResponse.json({
       data,
-      meta: { page: query.page, pageSize: query.pageSize, total, pageCount: Math.max(1, Math.ceil(total / query.pageSize)) },
+      meta: { page: query.page, pageSize: query.pageSize, total, pageCount: Math.max(1, Math.ceil(total / query.pageSize)), statusCounts },
     });
   } catch (error) {
     if (error instanceof ZodError) {

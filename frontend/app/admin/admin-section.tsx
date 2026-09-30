@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowLeft, Bell, CalendarDays, Check, ChevronDown, CircleHelp, Download,
+  ArrowLeft, CalendarDays, Check, CircleHelp, Download,
   AlertTriangle, Dumbbell, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
   Newspaper, Pencil, Plus, Search, Settings, ShieldCheck, Trash2, Trophy, Users, X,
 } from "lucide-react";
@@ -29,11 +29,11 @@ type SectionKey = "berita" | "program" | "cabang-olahraga" | "galeri" | "prestas
 const configs: Record<SectionKey, {
   title: string; description: string; button: string; icon: typeof Newspaper; stats: string[][]; rows: string[][];
 }> = {
-  berita: { title: "Berita", description: "Kelola artikel, pengumuman, dan informasi yang tampil di website.", button: "Tambah Berita", icon: Newspaper, stats: [["0", "Total berita"], ["—", "Telah terbit"], ["—", "Draf"], ["—", "Total pembaca"]], rows: [] },
-  program: { title: "Program", description: "Atur program pembinaan, jadwal, sasaran, dan periode pelaksanaan.", button: "Tambah Program", icon: CalendarDays, stats: [["0", "Total program"], ["—", "Program aktif"], ["—", "Terjadwal"], ["—", "Diarsipkan"]], rows: [] },
-  "cabang-olahraga": { title: "Cabang Olahraga", description: "Kelola data pengurus, atlet, pelatih, dan status cabang olahraga.", button: "Tambah Cabor", icon: Dumbbell, stats: [["0", "Total cabang"], ["—", "Cabor aktif"], ["—", "Draf"], ["—", "Diarsipkan"]], rows: [] },
-  galeri: { title: "Galeri", description: "Kelola album, foto, dan video dokumentasi kegiatan KONI.", button: "Tambah Album", icon: GalleryHorizontal, stats: [["0", "Total album"], ["—", "Tayang"], ["—", "Draf"], ["—", "Diarsipkan"]], rows: [] },
-  prestasi: { title: "Prestasi", description: "Catat medali, kejuaraan, atlet berprestasi, dan pencapaian kontingen.", button: "Tambah Prestasi", icon: Trophy, stats: [["0", "Total prestasi"], ["—", "Terbit"], ["—", "Draf"], ["—", "Diarsipkan"]], rows: [] },
+  berita: { title: "Berita", description: "Kelola artikel, pengumuman, dan informasi yang tampil di website.", button: "Tambah Berita", icon: Newspaper, stats: [["0", "Total berita"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
+  program: { title: "Program", description: "Atur program pembinaan, jadwal, sasaran, dan periode pelaksanaan.", button: "Tambah Program", icon: CalendarDays, stats: [["0", "Total program"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
+  "cabang-olahraga": { title: "Cabang Olahraga", description: "Kelola data pengurus, atlet, pelatih, dan status cabang olahraga.", button: "Tambah Cabor", icon: Dumbbell, stats: [["0", "Total cabang"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
+  galeri: { title: "Galeri", description: "Kelola album, foto, dan video dokumentasi kegiatan KONI.", button: "Tambah Album", icon: GalleryHorizontal, stats: [["0", "Total album"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
+  prestasi: { title: "Prestasi", description: "Catat medali, kejuaraan, atlet berprestasi, dan pencapaian kontingen.", button: "Tambah Prestasi", icon: Trophy, stats: [["0", "Total prestasi"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   "pesan-masuk": { title: "Pesan Masuk", description: "Tinjau pertanyaan, permohonan informasi, dan pesan dari pengunjung.", button: "Tandai Dibaca", icon: Mail, stats: [["12", "Total pesan"], ["5", "Belum dibaca"], ["4", "Hari ini"], ["94%", "Tingkat respons"]], rows: [["Andi Saputra", "Informasi pendaftaran atletik", "Informasi", "10 menit lalu", "Baru"], ["SMA Negeri 1 Andoolo", "Permohonan kerja sama pembinaan", "Kerja Sama", "1 jam lalu", "Baru"]] },
   pengguna: { title: "Pengguna", description: "Kelola akun, peran, dan hak akses tim pengelola website.", button: "Tambah Pengguna", icon: Users, stats: [["8", "Total pengguna"], ["3", "Administrator"], ["4", "Editor"], ["1", "Kontributor"]], rows: [["Admin KONI", "admin@konikonsel.id", "Super Admin", "Sekarang", "Aktif"], ["Humas KONI", "humas@konikonsel.id", "Editor", "5 hari lalu", "Aktif"]] },
   pengaturan: { title: "Pengaturan", description: "Atur identitas website, kontak, media sosial, dan preferensi publikasi.", button: "Simpan Perubahan", icon: Settings, stats: [["8", "Menu publik"], ["2", "Logo aktif"], ["4", "Kanal sosial"], ["100%", "Profil lengkap"]], rows: [] },
@@ -71,11 +71,19 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const contentRows = content.data?.data ?? [];
   const rows = kind ? contentRows : localRows;
   const total = kind ? content.data?.meta.total ?? 0 : localRows.length;
-  const stats = config.stats.map((entry, index) => index === 0 && kind ? [String(total), entry[1]] : entry);
   const Icon = config.icon;
   const role = currentUser.data?.data.role;
   const canEdit = role === "SUPER_ADMIN" || role === "EDITOR";
   const canDelete = role === "SUPER_ADMIN";
+
+  const statusCounts = content.data?.meta.statusCounts ?? {};
+  const overallTotal = Object.values(statusCounts).reduce((sum, value) => sum + (value ?? 0), 0);
+  const stats = kind ? [
+    [String(overallTotal), config.stats[0][1]],
+    [String((statusCounts.PUBLISHED ?? 0) + (statusCounts.ACTIVE ?? 0)), config.stats[1][1]],
+    [String(statusCounts.DRAFT ?? 0), config.stats[2][1]],
+    [String((statusCounts.SCHEDULED ?? 0) + (statusCounts.ARCHIVED ?? 0)), config.stats[3][1]],
+  ] : config.stats;
 
   function showToast(message: string) {
     setToast(message);
@@ -138,21 +146,53 @@ export function AdminSection({ section }: { section: SectionKey }) {
     setModal(true);
   }
 
+  async function exportData() {
+    if (!kind) return;
+    try {
+      const exported: ContentItem[] = [];
+      let exportPage = 1;
+      let pageCount = 1;
+      do {
+        const params = new URLSearchParams({ kind, page: String(exportPage), pageSize: "100" });
+        if (debouncedQuery) params.set("q", debouncedQuery);
+        if (status !== "ALL") params.set("status", status);
+        const response = await fetch(`/api/content?${params}`);
+        const body = await response.json() as { data?: ContentItem[]; meta?: { pageCount: number }; error?: string };
+        if (!response.ok || !body.data || !body.meta) throw new Error(body.error || "Gagal mengekspor data");
+        exported.push(...body.data);
+        pageCount = body.meta.pageCount;
+        exportPage += 1;
+      } while (exportPage <= pageCount);
+      const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+      const rows = [["Judul", "Slug", "Kategori", "Status", "Diperbarui", "Dilihat"], ...exported.map((item) => [item.title, item.slug, item.category, statusLabels[item.status], item.updatedAt, item.viewCount])];
+      const blob = new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${section}-${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      showToast(`${exported.length} data berhasil diekspor`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal mengekspor data");
+    }
+  }
+
   return (
     <main className="admin-shell">
       <aside className={sidebarOpen ? "admin-sidebar open" : "admin-sidebar"}>
         <div className="admin-brand"><Image src="/assets/logo-koni.png" alt="KONI" width={46} height={46} /><div><strong>KONI</strong><span>ADMIN PANEL</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Tutup menu"><X /></button></div>
-        <div className="admin-org"><Image src="/assets/logo-konawe-selatan.png" alt="Kabupaten Konawe Selatan" width={34} height={40} /><div><small>ORGANISASI</small><strong>KONI Konawe Selatan</strong></div><ChevronDown /></div>
-        <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span>{label === "Pesan Masuk" && <b>5</b>}</Link>)}</nav>
-        <div className="admin-help"><CircleHelp /><strong>Butuh bantuan?</strong><span>Lihat panduan pengelolaan website.</span><button>Pusat Bantuan</button></div>
+        <div className="admin-org"><Image src="/assets/logo-konawe-selatan.png" alt="Kabupaten Konawe Selatan" width={34} height={40} /><div><small>ORGANISASI</small><strong>KONI Konawe Selatan</strong></div></div>
+        <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}</nav>
+        <div className="admin-help"><CircleHelp /><strong>Panel pengelolaan</strong><span>Gunakan menu di atas untuk mengelola data website.</span></div>
         <Link className="admin-back" href="/"><ArrowLeft /> Kembali ke Website</Link>
         <LogoutButton />
       </aside>
 
       <section className="admin-main">
-        <header className="admin-topbar"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)}><Menu /></button><label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Cari ${config.title.toLowerCase()}...`} /></label><div className="admin-top-actions"><button><Bell /><i>3</i></button><span /><div className="admin-user"><div><strong>{currentUser.data?.data.name ?? "Admin KONI"}</strong><small>{role?.replaceAll("_", " ") ?? "Memuat akun…"}</small></div><b>{(currentUser.data?.data.name ?? "AK").split(" ").map((word) => word[0]).join("").slice(0, 2)}</b><ChevronDown /></div></div></header>
+        <header className="admin-topbar"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Buka menu"><Menu /></button><label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Cari ${config.title.toLowerCase()}...`} /></label><div className="admin-top-actions"><div className="admin-user"><div><strong>{currentUser.data?.data.name ?? "Admin KONI"}</strong><small>{role?.replaceAll("_", " ") ?? "Memuat akun…"}</small></div><b>{(currentUser.data?.data.name ?? "AK").split(" ").map((word) => word[0]).join("").slice(0, 2)}</b></div></div></header>
         <div className="admin-content">
-          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div><button className="admin-outline"><Download /> Ekspor Data</button><button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Pengaturan berhasil disimpan") : openCreate()}><Plus /> {config.button}</button></div></div>
+          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div>{kind && <button className="admin-outline" onClick={exportData}><Download /> Ekspor Data</button>}<button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Gunakan formulir pengaturan di bawah") : openCreate()}><Plus /> {config.button}</button></div></div>
           <div className="section-stat-grid">{stats.map(([value, label], index) => <article key={label}><span className={`section-stat-icon ssi-${index}`}><Icon /></span><div><strong>{value}</strong><small>{label}</small></div></article>)}</div>
 
           {section === "pengaturan" ? <SettingsPage onSave={() => showToast("Pengaturan berhasil disimpan")} /> : (

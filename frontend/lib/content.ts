@@ -26,6 +26,7 @@ export type ContentListResponse = {
     pageSize: number;
     total: number;
     pageCount: number;
+    statusCounts: Partial<Record<ContentStatus, number>>;
   };
 };
 

@@ -11,6 +11,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error || "Permintaan gagal");
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -63,10 +64,7 @@ export function useUpdateContent() {
 export function useDeleteContent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/content/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Gagal menghapus konten");
-    },
+    mutationFn: (id: string) => request<void>(`/api/content/${id}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["content"] }),
   });
 }
