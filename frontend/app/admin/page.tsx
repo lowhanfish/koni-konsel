@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useContentList } from "@/hooks/use-content";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useMessagesList } from "@/hooks/use-messages";
 import { statusLabels } from "@/lib/content";
 import { LogoutButton } from "./logout-button";
 
@@ -32,13 +33,14 @@ export default function AdminPage() {
   const branches = useContentList({ kind: "SPORT_BRANCH", pageSize: 1 });
   const galleries = useContentList({ kind: "GALLERY", pageSize: 1 });
   const achievements = useContentList({ kind: "ACHIEVEMENT", pageSize: 1 });
+  const messages = useMessagesList({ page: 1 });
   const currentUser = useCurrentUser();
   const posts = content.data?.data ?? [];
   const contentStats = [
     [Newspaper, newsSummary.data?.meta.total, "Total Berita", "/admin/berita", "red"],
     [GalleryHorizontal, galleries.data?.meta.total, "Album Galeri", "/admin/galeri", "gold"],
     [Medal, achievements.data?.meta.total, "Total Prestasi", "/admin/prestasi", "blue"],
-    [Dumbbell, branches.data?.meta.total, "Cabang Olahraga", "/admin/cabang-olahraga", "green"],
+    [Mail, messages.data?.meta.total, "Pesan Masuk", "/admin/pesan-masuk", "green"],
   ] as const;
   const distribution = [
     ["Berita", newsSummary.data?.meta.total ?? 0], ["Program", programs.data?.meta.total ?? 0],
@@ -51,7 +53,7 @@ export default function AdminPage() {
     <aside className={sidebarOpen ? "admin-sidebar open" : "admin-sidebar"}>
       <div className="admin-brand"><Image src="/assets/logo-koni.png" alt="KONI" width={46} height={46} /><div><strong>KONI</strong><span>ADMIN PANEL</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Tutup menu"><X /></button></div>
       <div className="admin-org"><Image src="/assets/logo-konawe-selatan.png" alt="Kabupaten Konawe Selatan" width={34} height={40} /><div><small>ORGANISASI</small><strong>KONI Konawe Selatan</strong></div></div>
-      <nav className="admin-nav" aria-label="Menu admin"><small>MENU UTAMA</small>{menus.slice(0,6).map(([label,Icon,href])=><Link className={active===label?"active":""} key={label} href={href}><Icon/><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label,Icon,href])=><Link className={active===label?"active":""} key={label} href={href}><Icon/><span>{label}</span></Link>)}</nav>
+      <nav className="admin-nav" aria-label="Menu admin"><small>MENU UTAMA</small>{menus.slice(0,6).map(([label,Icon,href])=><Link className={active===label?"active":""} key={label} href={href}><Icon/><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label,Icon,href])=><Link className={active===label?"active":""} key={label} href={href}><Icon/><span>{label}</span>{label==="Pesan Masuk"&&Boolean(messages.data?.meta.statusCounts.NEW)&&<b>{messages.data?.meta.statusCounts.NEW}</b>}</Link>)}</nav>
       <div className="admin-help"><CircleHelp/><strong>Panel pengelolaan</strong><span>Gunakan menu di atas untuk mengelola data website.</span></div>
       <Link className="admin-back" href="/"><ArrowLeft/> Kembali ke Website</Link>
       <LogoutButton />

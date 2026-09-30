@@ -8,6 +8,7 @@ if (!email || !password) {
 
 let cookie = "";
 let createdId = "";
+let createdMessageId = "";
 
 async function request(path, init = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -61,10 +62,29 @@ try {
   const missing = await request(`/api/content/${create.body.data.id}`);
   assert(missing.response.status === 404, `Verifikasi delete gagal (${missing.response.status})`);
 
+  const messageSubject = `Smoke Test Pesan ${Date.now()}`;
+  const contact = await request("/api/contact", {
+    method: "POST",
+    body: JSON.stringify({ name: "Penguji Admin", email: "smoke@example.com", subject: messageSubject, message: "Pesan sementara untuk memverifikasi kotak masuk admin.", website: "" }),
+  });
+  assert(contact.response.status === 201 && contact.body?.data?.id, `Kirim pesan gagal (${contact.response.status})`);
+  createdMessageId = contact.body.data.id;
+
+  const messages = await request(`/api/messages?q=${encodeURIComponent(messageSubject)}&page=1&pageSize=10`);
+  assert(messages.response.ok && messages.body?.data?.some((message) => message.id === createdMessageId), `Daftar pesan gagal (${messages.response.status})`);
+
+  const readMessage = await request(`/api/messages/${createdMessageId}`, { method: "PATCH", body: JSON.stringify({ status: "READ" }) });
+  assert(readMessage.response.ok && readMessage.body?.data?.status === "READ", `Update pesan gagal (${readMessage.response.status})`);
+
+  const deleteMessage = await request(`/api/messages/${createdMessageId}`, { method: "DELETE" });
+  assert(deleteMessage.response.status === 204, `Hapus pesan gagal (${deleteMessage.response.status})`);
+  createdMessageId = "";
+
   const logout = await request("/api/auth/logout", { method: "POST" });
   assert(logout.response.ok, `Logout gagal (${logout.response.status})`);
 
-  console.log("Smoke test admin lulus: login, list, create, update, detail, delete, dan logout.");
+  console.log("Smoke test admin lulus: autentikasi, CRUD konten, formulir kontak, kotak masuk, dan logout.");
 } finally {
   if (createdId) await request(`/api/content/${createdId}`, { method: "DELETE" }).catch(() => undefined);
+  if (createdMessageId) await request(`/api/messages/${createdMessageId}`, { method: "DELETE" }).catch(() => undefined);
 }

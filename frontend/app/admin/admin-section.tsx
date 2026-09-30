@@ -10,11 +10,13 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useContentItem, useContentList, useCreateContent, useDeleteContent, useUpdateContent } from "@/hooks/use-content";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useMessagesList } from "@/hooks/use-messages";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { contentStatuses, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
 import { contentFormSchema } from "@/lib/validation/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
 import { LogoutButton } from "./logout-button";
+import { MessagesPanel } from "./messages-panel";
 
 const menus = [
   ["Dashboard", LayoutDashboard, "/admin"], ["Berita", Newspaper, "/admin/berita"],
@@ -34,7 +36,7 @@ const configs: Record<SectionKey, {
   "cabang-olahraga": { title: "Cabang Olahraga", description: "Kelola data pengurus, atlet, pelatih, dan status cabang olahraga.", button: "Tambah Cabor", icon: Dumbbell, stats: [["0", "Total cabang"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   galeri: { title: "Galeri", description: "Kelola album, foto, dan video dokumentasi kegiatan KONI.", button: "Tambah Album", icon: GalleryHorizontal, stats: [["0", "Total album"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   prestasi: { title: "Prestasi", description: "Catat medali, kejuaraan, atlet berprestasi, dan pencapaian kontingen.", button: "Tambah Prestasi", icon: Trophy, stats: [["0", "Total prestasi"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
-  "pesan-masuk": { title: "Pesan Masuk", description: "Tinjau pertanyaan, permohonan informasi, dan pesan dari pengunjung.", button: "Tandai Dibaca", icon: Mail, stats: [["12", "Total pesan"], ["5", "Belum dibaca"], ["4", "Hari ini"], ["94%", "Tingkat respons"]], rows: [["Andi Saputra", "Informasi pendaftaran atletik", "Informasi", "10 menit lalu", "Baru"], ["SMA Negeri 1 Andoolo", "Permohonan kerja sama pembinaan", "Kerja Sama", "1 jam lalu", "Baru"]] },
+  "pesan-masuk": { title: "Pesan Masuk", description: "Tinjau pertanyaan, permohonan informasi, dan pesan dari pengunjung.", button: "", icon: Mail, stats: [], rows: [] },
   pengguna: { title: "Pengguna", description: "Kelola akun, peran, dan hak akses tim pengelola website.", button: "Tambah Pengguna", icon: Users, stats: [["8", "Total pengguna"], ["3", "Administrator"], ["4", "Editor"], ["1", "Kontributor"]], rows: [["Admin KONI", "admin@konikonsel.id", "Super Admin", "Sekarang", "Aktif"], ["Humas KONI", "humas@konikonsel.id", "Editor", "5 hari lalu", "Aktif"]] },
   pengaturan: { title: "Pengaturan", description: "Atur identitas website, kontak, media sosial, dan preferensi publikasi.", button: "Simpan Perubahan", icon: Settings, stats: [["8", "Menu publik"], ["2", "Logo aktif"], ["4", "Kanal sosial"], ["100%", "Profil lengkap"]], rows: [] },
 };
@@ -61,6 +63,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const deleteContent = useDeleteContent();
   const preview = useContentItem(previewId);
   const currentUser = useCurrentUser();
+  const messageSummary = useMessagesList({ page: 1 });
 
   useEffect(() => reset(), [reset, section]);
 
@@ -183,7 +186,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
       <aside className={sidebarOpen ? "admin-sidebar open" : "admin-sidebar"}>
         <div className="admin-brand"><Image src="/assets/logo-koni.png" alt="KONI" width={46} height={46} /><div><strong>KONI</strong><span>ADMIN PANEL</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Tutup menu"><X /></button></div>
         <div className="admin-org"><Image src="/assets/logo-konawe-selatan.png" alt="Kabupaten Konawe Selatan" width={34} height={40} /><div><small>ORGANISASI</small><strong>KONI Konawe Selatan</strong></div></div>
-        <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}</nav>
+        <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span>{label === "Pesan Masuk" && Boolean(messageSummary.data?.meta.statusCounts.NEW) && <b>{messageSummary.data?.meta.statusCounts.NEW}</b>}</Link>)}</nav>
         <div className="admin-help"><CircleHelp /><strong>Panel pengelolaan</strong><span>Gunakan menu di atas untuk mengelola data website.</span></div>
         <Link className="admin-back" href="/"><ArrowLeft /> Kembali ke Website</Link>
         <LogoutButton />
@@ -192,10 +195,10 @@ export function AdminSection({ section }: { section: SectionKey }) {
       <section className="admin-main">
         <header className="admin-topbar"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Buka menu"><Menu /></button><label><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Cari ${config.title.toLowerCase()}...`} /></label><div className="admin-top-actions"><div className="admin-user"><div><strong>{currentUser.data?.data.name ?? "Admin KONI"}</strong><small>{role?.replaceAll("_", " ") ?? "Memuat akun…"}</small></div><b>{(currentUser.data?.data.name ?? "AK").split(" ").map((word) => word[0]).join("").slice(0, 2)}</b></div></div></header>
         <div className="admin-content">
-          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div>{kind && <button className="admin-outline" onClick={exportData}><Download /> Ekspor Data</button>}<button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Gunakan formulir pengaturan di bawah") : openCreate()}><Plus /> {config.button}</button></div></div>
-          <div className="section-stat-grid">{stats.map(([value, label], index) => <article key={label}><span className={`section-stat-icon ssi-${index}`}><Icon /></span><div><strong>{value}</strong><small>{label}</small></div></article>)}</div>
+          <div className="admin-welcome"><div><span>MANAJEMEN KONTEN</span><h1>{config.title}</h1><p>{config.description}</p></div><div>{kind && <button className="admin-outline" onClick={exportData}><Download /> Ekspor Data</button>}{section !== "pesan-masuk" && <button className="admin-primary" onClick={() => section === "pengaturan" ? showToast("Gunakan formulir pengaturan di bawah") : openCreate()}><Plus /> {config.button}</button>}</div></div>
+          {section !== "pesan-masuk" && <div className="section-stat-grid">{stats.map(([value, label], index) => <article key={label}><span className={`section-stat-icon ssi-${index}`}><Icon /></span><div><strong>{value}</strong><small>{label}</small></div></article>)}</div>}
 
-          {section === "pengaturan" ? <SettingsPage onSave={() => showToast("Pengaturan berhasil disimpan")} /> : (
+          {section === "pesan-masuk" ? <MessagesPanel key={debouncedQuery} query={debouncedQuery} canDelete={canDelete} showToast={showToast} /> : section === "pengaturan" ? <SettingsPage onSave={() => showToast("Pengaturan berhasil disimpan")} /> : (
             <section className="admin-panel section-table-panel">
               <div className="panel-head"><div><h2>Daftar {config.title}</h2><p>{total} data ditemukan{query !== debouncedQuery ? " · mencari…" : ""}</p></div><div className="section-filters"><select value={status} onChange={(event) => setStatus(event.target.value as ContentStatus | "ALL")} disabled={!kind}><option value="ALL">Semua Status</option>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></div></div>
               <div className="admin-table-wrap"><table><thead><tr><th>JUDUL / NAMA</th><th>KATEGORI</th><th>DIPERBARUI</th><th>STATUS</th><th>DILIHAT</th><th /></tr></thead><tbody>
