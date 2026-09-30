@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowRight, Bike, Building2, Dumbbell, FileText, Goal, Images,
+  ArrowRight, Bike, Building2, Camera, Dumbbell, FileText, Goal, Images, MessageCircle,
   Mail, MapPin, Medal, Menu, Newspaper, Phone, Play, Search,
-  ShieldCheck, Target, Trophy, Users, Volleyball, Waves, X, Zap,
+  ShieldCheck, Target, Trophy, Users, Video, Volleyball, Waves, X, Zap,
 } from "lucide-react";
 import { useState } from "react";
+import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 
 const quickLinks = [
   { icon: Users, title: "Profil KONI", text: "Sejarah, visi, misi dan struktur organisasi", href: "/profil" },
@@ -62,6 +63,10 @@ function SectionTitle({ children, note }: { children: React.ReactNode; note?: st
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [galleryFilter, setGalleryFilter] = useState("Semua");
+  const settingsQuery = useSettings();
+  const settings = settingsQuery.data?.data ?? fallbackSettings;
+  const socialLinks = [[settings.facebookUrl, MessageCircle, "Facebook"], [settings.instagramUrl, Camera, "Instagram"], [settings.youtubeUrl, Video, "YouTube"]] as const;
+  const hasSocialLinks = socialLinks.some(([url]) => Boolean(url));
 
   return (
     <main id="beranda">
@@ -154,12 +159,12 @@ export default function Home() {
 
       <footer id="kontak">
         <div className="container footer-grid">
-          <div className="footer-brand"><Brand /><p>Bersama memajukan olahraga, mencetak atlet berprestasi, dan mengharumkan nama Konawe Selatan di tingkat daerah, nasional, dan internasional.</p><div className="socials"><a href="mailto:konikonsel@gmail.com" aria-label="Kirim email ke KONI Konawe Selatan"><Mail /></a><a href="tel:+6282110009090" aria-label="Telepon KONI Konawe Selatan"><Phone /></a></div></div>
+          <div className="footer-brand"><Brand /><p>{settings.description}</p><div className="socials">{hasSocialLinks ? socialLinks.map(([url, Icon, label]) => url && <a key={label} href={url} target="_blank" rel="noreferrer" aria-label={`${label} resmi KONI Konawe Selatan`}><Icon /></a>) : <><a href={`mailto:${settings.email}`} aria-label="Kirim email ke KONI Konawe Selatan"><Mail /></a><a href={`tel:${settings.phone.replace(/[^\d+]/g, "")}`} aria-label="Telepon KONI Konawe Selatan"><Phone /></a></>}</div></div>
           <div><h3>Quick Menu</h3><nav className="footer-nav">{[["Beranda","/"],["Profil","/profil"],["Program","/program"],["Cabang Olahraga","/cabang-olahraga"],["Berita","/berita"],["Galeri","/galeri"],["Prestasi","/prestasi"],["Kontak","/kontak"]].map(([item,href]) => <Link key={item} href={href}>{item}</Link>)}</nav></div>
-          <div><h3>Kontak Kami</h3><ul className="contact-list"><li><MapPin />Jl. Poros Andoolo, Kecamatan Andoolo, Kabupaten Konawe Selatan, Sulawesi Tenggara</li><li><Mail />konikonsel@gmail.com</li><li><Phone />0821 1000 9090</li></ul></div>
-          <div><h3>Lokasi</h3><div className="map-card"><MapPin fill="currentColor" /><div><strong>KONI</strong><span>Konawe Selatan</span></div></div><a className="footer-map-link" href="https://maps.google.com/?q=Andoolo+Konawe+Selatan" target="_blank" rel="noreferrer">Lihat di Google Maps <ArrowRight size={15} /></a></div>
+          <div><h3>Kontak Kami</h3><ul className="contact-list"><li><MapPin />{settings.address}</li><li><Mail />{settings.email}</li><li><Phone />{settings.phone}</li></ul></div>
+          <div><h3>Lokasi</h3><div className="map-card"><MapPin fill="currentColor" /><div><strong>KONI</strong><span>Konawe Selatan</span></div></div><a className="footer-map-link" href={`https://maps.google.com/?q=${encodeURIComponent(settings.address)}`} target="_blank" rel="noreferrer">Lihat di Google Maps <ArrowRight size={15} /></a></div>
         </div>
-        <div className="container copyright"><span>© 2024 KONI Kabupaten Konawe Selatan. All rights reserved.</span><span>Kebijakan Privasi &nbsp;|&nbsp; Syarat & Ketentuan</span></div>
+        <div className="container copyright"><span>© {new Date().getFullYear()} {settings.organizationName}. All rights reserved.</span></div>
       </footer>
     </main>
   );

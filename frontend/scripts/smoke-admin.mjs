@@ -10,6 +10,7 @@ let cookie = "";
 let createdId = "";
 let createdMessageId = "";
 let createdUserId = "";
+let originalSettings = null;
 
 async function request(path, init = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -28,6 +29,19 @@ async function request(path, init = {}) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function settingsPayload(settings) {
+  return {
+    organizationName: settings.organizationName,
+    description: settings.description,
+    email: settings.email,
+    phone: settings.phone,
+    address: settings.address,
+    facebookUrl: settings.facebookUrl,
+    instagramUrl: settings.instagramUrl,
+    youtubeUrl: settings.youtubeUrl,
+  };
 }
 
 try {
@@ -99,12 +113,25 @@ try {
   assert(deleteUser.response.status === 204, `Hapus pengguna gagal (${deleteUser.response.status})`);
   createdUserId = "";
 
+  const settings = await request("/api/settings");
+  assert(settings.response.ok && settings.body?.data?.organizationName, `Baca pengaturan gagal (${settings.response.status})`);
+  originalSettings = settings.body.data;
+  const settingsInput = settingsPayload(originalSettings);
+  const updateSettings = await request("/api/settings", { method: "PATCH", body: JSON.stringify({ ...settingsInput, description: `${settingsInput.description} [smoke]` }) });
+  assert(updateSettings.response.ok && updateSettings.body?.data?.description.endsWith("[smoke]"), `Update pengaturan gagal (${updateSettings.response.status})`);
+  const restoreSettings = await request("/api/settings", { method: "PATCH", body: JSON.stringify(settingsInput) });
+  assert(restoreSettings.response.ok && restoreSettings.body?.data?.description === settingsInput.description, `Pemulihan pengaturan gagal (${restoreSettings.response.status})`);
+  originalSettings = null;
+
   const logout = await request("/api/auth/logout", { method: "POST" });
   assert(logout.response.ok, `Logout gagal (${logout.response.status})`);
 
-  console.log("Smoke test admin lulus: autentikasi, CRUD konten, formulir kontak, kotak masuk, pengguna, dan logout.");
+  console.log("Smoke test admin lulus: autentikasi, CRUD konten, formulir kontak, kotak masuk, pengguna, pengaturan, dan logout.");
 } finally {
   if (createdId) await request(`/api/content/${createdId}`, { method: "DELETE" }).catch(() => undefined);
   if (createdMessageId) await request(`/api/messages/${createdMessageId}`, { method: "DELETE" }).catch(() => undefined);
   if (createdUserId) await request(`/api/users/${createdUserId}`, { method: "DELETE" }).catch(() => undefined);
+  if (originalSettings) {
+    await request("/api/settings", { method: "PATCH", body: JSON.stringify(settingsPayload(originalSettings)) }).catch(() => undefined);
+  }
 }

@@ -92,3 +92,17 @@ model ContactMessage {
   @@index([status, createdAt])
   @@index([email])
 }
+
+model SiteSetting {
+  id               String   @id @default("main") @db.VarChar(20)
+  organizationName String   @default("KONI Kabupaten Konawe Selatan")
+  description      String   @db.Text
+  email            String
+  phone            String
+  address          String   @db.Text
+  facebookUrl      String?
+  instagramUrl     String?
+  youtubeUrl       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
