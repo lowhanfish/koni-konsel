@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowRight, Bike, Building2, Camera, Dumbbell, FileText, Goal, Images,
-  Mail, MapPin, Medal, Menu, MessageCircle, Newspaper, Phone, Play, Search,
-  ShieldCheck, Target, Trophy, Users, Video, Volleyball, Waves, X, Zap,
+  ArrowRight, Bike, Building2, Dumbbell, FileText, Goal, Images,
+  Mail, MapPin, Medal, Menu, Newspaper, Phone, Play, Search,
+  ShieldCheck, Target, Trophy, Users, Volleyball, Waves, X, Zap,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -74,7 +74,7 @@ export default function Home() {
             ))}
           </nav>
           <div className="header-actions">
-            <button className="icon-button" aria-label="Cari"><Search size={17} /></button>
+            <Link className="icon-button" href="/berita" aria-label="Cari berita"><Search size={17} /></Link>
             <Link className="button button-small" href="/kontak">Hubungi Kami</Link>
             <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Buka menu" aria-expanded={menuOpen}>{menuOpen ? <X /> : <Menu />}</button>
           </div>
@@ -104,7 +104,7 @@ export default function Home() {
 
       <section className="quick-nav container" aria-label="Menu layanan">
         {quickLinks.map(({ icon: Icon, title, text, href }, index) => (
-          <a href={href} className="quick-card" key={title}><Icon className={index % 2 ? "gold" : "red"} size={39} strokeWidth={2.4} /><strong>{title}</strong><span>{text}</span><i><ArrowRight size={14} /></i></a>
+          <Link href={href} className="quick-card" key={title}><Icon className={index % 2 ? "gold" : "red"} size={39} strokeWidth={2.4} /><strong>{title}</strong><span>{text}</span><i><ArrowRight size={14} /></i></Link>
         ))}
       </section>
 
@@ -130,7 +130,7 @@ export default function Home() {
 
       <section className="section sports-section" id="cabor"><div className="container">
         <div className="title-row"><SectionTitle>CABANG OLAHRAGA</SectionTitle><Link className="outline-link" href="/cabang-olahraga">Lihat Semua Cabor <ArrowRight size={16} /></Link></div>
-        <div className="sport-list">{sports.map(({ icon: Icon, name }, index) => <a href="#kontak" className="sport-item" key={name}><span className={`sport-icon sport-${index % 5}`}><Icon size={27} /></span><small>{name}</small></a>)}</div>
+        <div className="sport-list">{sports.map(({ icon: Icon, name }, index) => <Link href="/cabang-olahraga" className="sport-item" key={name}><span className={`sport-icon sport-${index % 5}`}><Icon size={27} /></span><small>{name}</small></Link>)}</div>
       </div></section>
 
       <section className="section achievement-section" id="prestasi"><div className="container">
@@ -140,7 +140,7 @@ export default function Home() {
 
       <section className="section" id="berita"><div className="container">
         <div className="title-row"><SectionTitle>BERITA TERBARU</SectionTitle><Link className="outline-link" href="/berita">Lihat Semua Berita <ArrowRight size={16} /></Link></div>
-        <div className="news-grid">{news.map((item) => <article className="news-card" key={item.title}><div className="sports-image news-image" style={{ backgroundPosition: `${item.position} center` }} /><div className="news-body"><time>{item.date}</time><h3>{item.title}</h3><p>{item.excerpt}</p><a href="#kontak" aria-label={`Baca ${item.title}`}><ArrowRight size={18} /></a></div></article>)}</div>
+        <div className="news-grid">{news.map((item) => <article className="news-card" key={item.title}><div className="sports-image news-image" style={{ backgroundPosition: `${item.position} center` }} /><div className="news-body"><time>{item.date}</time><h3>{item.title}</h3><p>{item.excerpt}</p><Link href="/berita" aria-label={`Lihat daftar berita untuk ${item.title}`}><ArrowRight size={18} /></Link></div></article>)}</div>
       </div></section>
 
       <section className="section gallery-section" id="galeri"><div className="container">
@@ -154,7 +154,7 @@ export default function Home() {
 
       <footer id="kontak">
         <div className="container footer-grid">
-          <div className="footer-brand"><Brand /><p>Bersama memajukan olahraga, mencetak atlet berprestasi, dan mengharumkan nama Konawe Selatan di tingkat daerah, nasional, dan internasional.</p><div className="socials"><a href="#" aria-label="Facebook"><MessageCircle /></a><a href="#" aria-label="Instagram"><Camera /></a><a href="#" aria-label="Youtube"><Video /></a></div></div>
+          <div className="footer-brand"><Brand /><p>Bersama memajukan olahraga, mencetak atlet berprestasi, dan mengharumkan nama Konawe Selatan di tingkat daerah, nasional, dan internasional.</p><div className="socials"><a href="mailto:konikonsel@gmail.com" aria-label="Kirim email ke KONI Konawe Selatan"><Mail /></a><a href="tel:+6282110009090" aria-label="Telepon KONI Konawe Selatan"><Phone /></a></div></div>
           <div><h3>Quick Menu</h3><nav className="footer-nav">{[["Beranda","/"],["Profil","/profil"],["Program","/program"],["Cabang Olahraga","/cabang-olahraga"],["Berita","/berita"],["Galeri","/galeri"],["Prestasi","/prestasi"],["Kontak","/kontak"]].map(([item,href]) => <Link key={item} href={href}>{item}</Link>)}</nav></div>
           <div><h3>Kontak Kami</h3><ul className="contact-list"><li><MapPin />Jl. Poros Andoolo, Kecamatan Andoolo, Kabupaten Konawe Selatan, Sulawesi Tenggara</li><li><Mail />konikonsel@gmail.com</li><li><Phone />0821 1000 9090</li></ul></div>
           <div><h3>Lokasi</h3><div className="map-card"><MapPin fill="currentColor" /><div><strong>KONI</strong><span>Konawe Selatan</span></div></div><a className="footer-map-link" href="https://maps.google.com/?q=Andoolo+Konawe+Selatan" target="_blank" rel="noreferrer">Lihat di Google Maps <ArrowRight size={15} /></a></div>
