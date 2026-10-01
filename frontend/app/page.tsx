@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 import { usePublicContent } from "@/hooks/use-public-content";
-import { plainTextFromRichText } from "@/lib/rich-text";
+import { excerptFromRichText } from "@/lib/rich-text";
 
 const quickLinks = [
   { icon: Users, title: "Profil KONI", text: "Sejarah, visi, misi dan struktur organisasi", href: "/profil" },
@@ -74,9 +74,9 @@ export default function Home() {
   const achievementContent = usePublicContent({ kind: "ACHIEVEMENT", pageSize: 100 });
   const socialLinks = [[settings.facebookUrl, MessageCircle, "Facebook"], [settings.instagramUrl, Camera, "Instagram"], [settings.youtubeUrl, Video, "YouTube"]] as const;
   const hasSocialLinks = socialLinks.some(([url]) => Boolean(url));
-  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: plainTextFromRichText(item.summary) || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%`, href: `/program/${item.slug}` })) : programs.map((item) => ({ ...item, href: "/program" }));
-  const sportCards = branchContent.data ? branchContent.data.data.map((item, index) => ({ icon: sports[index % sports.length].icon, name: item.title })) : sports;
-  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: plainTextFromRichText(item.summary) || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
+  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: excerptFromRichText(item.summary, 150) || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%`, href: `/program/${item.slug}` })) : programs.map((item) => ({ ...item, href: "/program" }));
+  const sportCards = branchContent.data ? branchContent.data.data.map((item, index) => ({ icon: sports[index % sports.length].icon, name: item.title, href: `/cabang-olahraga/${item.slug}` })) : sports.map((item) => ({ ...item, href: "/cabang-olahraga" }));
+  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: excerptFromRichText(item.summary, 190) || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
   const galleryItems = galleryContent.data ? galleryContent.data.data : [];
   const galleryFilterOptions = galleryContent.data ? ["Semua", ...new Set(galleryItems.map((item) => item.category).filter((value): value is string => Boolean(value)))] : galleryFilters;
   const achievements = achievementContent.data?.data ?? [];
@@ -149,7 +149,7 @@ export default function Home() {
 
       <section className="section sports-section" id="cabor"><div className="container">
         <div className="title-row"><SectionTitle>CABANG OLAHRAGA</SectionTitle><Link className="outline-link" href="/cabang-olahraga">Lihat Semua Cabor <ArrowRight size={16} /></Link></div>
-        <div className="sport-list">{sportCards.map(({ icon: Icon, name }, index) => <Link href="/cabang-olahraga" className="sport-item" key={name}><span className={`sport-icon sport-${index % 5}`}><Icon size={27} /></span><small>{name}</small></Link>)}</div>
+        <div className="sport-list">{sportCards.map(({ icon: Icon, name, href }, index) => <Link href={href} className="sport-item" key={name}><span className={`sport-icon sport-${index % 5}`}><Icon size={27} /></span><small>{name}</small></Link>)}</div>
       </div></section>
 
       <section className="section achievement-section" id="prestasi"><div className="container">

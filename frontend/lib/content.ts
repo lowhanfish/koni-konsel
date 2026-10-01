@@ -30,6 +30,14 @@ export type ContentListResponse = {
   };
 };
 
+export function getContentSource(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const sourceUrl = "sourceUrl" in metadata ? metadata.sourceUrl : undefined;
+  const sourceTitle = "sourceTitle" in metadata ? metadata.sourceTitle : undefined;
+  if (typeof sourceUrl !== "string" || typeof sourceTitle !== "string") return null;
+  return { sourceUrl, sourceTitle };
+}
+
 export const sectionKindMap: Record<string, ContentKind | undefined> = {
   berita: "NEWS",
   program: "PROGRAM",

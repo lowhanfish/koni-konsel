@@ -18,6 +18,11 @@ export function plainTextFromRichText(value: string | null | undefined) {
     .trim();
 }
 
+export function excerptFromRichText(value: string | null | undefined, limit = 180) {
+  const text = plainTextFromRichText(value);
+  return text.length > limit ? `${text.slice(0, limit).trimEnd()}…` : text;
+}
+
 export function richTextToHtml(value: string | null | undefined) {
   if (!value) return "<p>Informasi selengkapnya akan segera diperbarui.</p>";
   if (/<[a-z][\s\S]*>/i.test(value)) return value;
