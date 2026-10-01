@@ -73,7 +73,7 @@ export default function Home() {
   const achievementContent = usePublicContent({ kind: "ACHIEVEMENT", pageSize: 100 });
   const socialLinks = [[settings.facebookUrl, MessageCircle, "Facebook"], [settings.instagramUrl, Camera, "Instagram"], [settings.youtubeUrl, Video, "YouTube"]] as const;
   const hasSocialLinks = socialLinks.some(([url]) => Boolean(url));
-  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: item.summary || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%` })) : programs;
+  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: item.summary || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%`, href: `/program/${item.slug}` })) : programs.map((item) => ({ ...item, href: "/program" }));
   const sportCards = branchContent.data ? branchContent.data.data.map((item, index) => ({ icon: sports[index % sports.length].icon, name: item.title })) : sports;
   const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: item.summary || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
   const galleryItems = galleryContent.data ? galleryContent.data.data : [];
@@ -143,7 +143,7 @@ export default function Home() {
 
       <section className="section" id="program"><div className="container">
         <div className="title-row"><SectionTitle note="Berbagai program strategis untuk mendukung pembinaan atlet, pengembangan cabang olahraga, dan peningkatan prestasi olahraga di Konawe Selatan.">PROGRAM UNGGULAN</SectionTitle><Link className="outline-link" href="/program">Lihat Semua Program <ArrowRight size={16} /></Link></div>
-        <div className="program-grid">{programCards.map((program) => <article className="program-card" key={program.title}><div className="sports-image" style={{ backgroundPosition: `${program.position} center` }} /><div><h3>{program.title}</h3><p>{program.text}</p></div></article>)}</div>
+        <div className="program-grid">{programCards.map((program) => <Link className="program-card" href={program.href} key={program.title}><div className="sports-image" style={{ backgroundPosition: `${program.position} center` }} /><div><h3>{program.title}</h3><p>{program.text}</p></div></Link>)}</div>
       </div></section>
 
       <section className="section sports-section" id="cabor"><div className="container">
