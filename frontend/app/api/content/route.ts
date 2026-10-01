@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser, hasRole } from "@/lib/server/auth";
+import { sanitizeRichText } from "@/lib/server/sanitize-rich-text";
 import { createSlug } from "@/lib/server/slug";
 import { contentQuerySchema, createContentSchema } from "@/lib/validation/content";
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const slug = duplicate ? `${baseSlug}-${Date.now().toString(36)}` : baseSlug;
     const status = user.role === "CONTRIBUTOR" ? "DRAFT" : input.status;
     const publishedAt = status === "PUBLISHED" ? input.publishedAt ?? new Date() : input.publishedAt;
-    const data = await prisma.contentItem.create({ data: { ...input, status, slug, publishedAt } });
+    const data = await prisma.contentItem.create({ data: { ...input, summary: sanitizeRichText(input.summary), status, slug, publishedAt } });
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {

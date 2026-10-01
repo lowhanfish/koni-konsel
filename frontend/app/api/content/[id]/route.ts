@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser, hasRole } from "@/lib/server/auth";
+import { sanitizeRichText } from "@/lib/server/sanitize-rich-text";
 import { createSlug } from "@/lib/server/slug";
 import { updateContentSchema } from "@/lib/validation/content";
 
@@ -30,6 +31,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       where: { id },
       data: {
         ...input,
+        ...(input.summary !== undefined ? { summary: sanitizeRichText(input.summary) } : {}),
         ...(input.slug ? { slug: createSlug(input.slug) } : {}),
         publishedAt: status === "PUBLISHED" ? input.publishedAt ?? current.publishedAt ?? new Date() : input.publishedAt,
       },

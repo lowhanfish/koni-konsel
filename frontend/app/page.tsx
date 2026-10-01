@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 import { usePublicContent } from "@/hooks/use-public-content";
+import { plainTextFromRichText } from "@/lib/rich-text";
 
 const quickLinks = [
   { icon: Users, title: "Profil KONI", text: "Sejarah, visi, misi dan struktur organisasi", href: "/profil" },
@@ -73,9 +74,9 @@ export default function Home() {
   const achievementContent = usePublicContent({ kind: "ACHIEVEMENT", pageSize: 100 });
   const socialLinks = [[settings.facebookUrl, MessageCircle, "Facebook"], [settings.instagramUrl, Camera, "Instagram"], [settings.youtubeUrl, Video, "YouTube"]] as const;
   const hasSocialLinks = socialLinks.some(([url]) => Boolean(url));
-  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: item.summary || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%`, href: `/program/${item.slug}` })) : programs.map((item) => ({ ...item, href: "/program" }));
+  const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: plainTextFromRichText(item.summary) || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%`, href: `/program/${item.slug}` })) : programs.map((item) => ({ ...item, href: "/program" }));
   const sportCards = branchContent.data ? branchContent.data.data.map((item, index) => ({ icon: sports[index % sports.length].icon, name: item.title })) : sports;
-  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: item.summary || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
+  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: plainTextFromRichText(item.summary) || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
   const galleryItems = galleryContent.data ? galleryContent.data.data : [];
   const galleryFilterOptions = galleryContent.data ? ["Semua", ...new Set(galleryItems.map((item) => item.category).filter((value): value is string => Boolean(value)))] : galleryFilters;
   const achievements = achievementContent.data?.data ?? [];

@@ -57,14 +57,15 @@ try {
   const contentTitle = `Smoke Test Admin ${Date.now()}`;
   const create = await request("/api/content", {
     method: "POST",
-    body: JSON.stringify({ kind: "NEWS", title: contentTitle, category: "Pengujian", summary: "Record sementara untuk verifikasi CRUD.", status: "DRAFT" }),
+    body: JSON.stringify({ kind: "NEWS", title: contentTitle, category: "Pengujian", summary: "<p>Record <strong>sementara</strong> untuk verifikasi CRUD.</p><script>alert('xss')</script>", status: "DRAFT" }),
   });
   assert(create.response.status === 201 && create.body?.data?.id, `Create gagal (${create.response.status})`);
+  assert(create.body.data.summary.includes("<strong>sementara</strong>") && !create.body.data.summary.includes("<script"), "Sanitasi rich-text gagal");
   createdId = create.body.data.id;
 
   const update = await request(`/api/content/${createdId}`, {
     method: "PATCH",
-    body: JSON.stringify({ summary: "Record sementara berhasil diperbarui.", status: "PUBLISHED" }),
+    body: JSON.stringify({ summary: "<h2>Hasil pengujian</h2><p>Record sementara berhasil diperbarui.</p>", status: "PUBLISHED" }),
   });
   assert(update.response.ok && update.body?.data?.summary.includes("diperbarui"), `Update gagal (${update.response.status})`);
 

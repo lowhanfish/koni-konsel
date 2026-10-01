@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePublicContent } from "@/hooks/use-public-content";
+import { plainTextFromRichText } from "@/lib/rich-text";
 import { PageHero, SiteShell } from "../components/site-chrome";
 
 function formatDate(value: string | null, fallback: string) {
@@ -21,6 +22,6 @@ export default function BeritaPage() {
     {news.isPending && <p className="empty-state">Memuat berita…</p>}
     {news.isError && <p className="empty-state">Berita belum dapat dimuat. Silakan coba kembali.</p>}
     {!news.isPending && !news.isError && !featured && <p className="empty-state">Tidak ada berita yang cocok dengan pencarian “{query}”.</p>}
-    {featured && <><div className="featured-news"><div className="feature-image"/><div><span className="news-tag">{featured.category || "BERITA UTAMA"}</span><small><CalendarDays/> {formatDate(featured.publishedAt, featured.updatedAt)}</small><h2>{featured.title}</h2><p>{featured.summary || "Informasi terbaru KONI Kabupaten Konawe Selatan."}</p><Link href={`/berita/${featured.slug}`}>Baca selengkapnya <ArrowRight size={17}/></Link></div></div><div className="article-grid">{articles.map((item, index) => <article key={item.id}><div className="article-image" style={{backgroundPosition:`${16+index*13}% center`}}/><div><span className="news-tag">{item.category || "INFORMASI"}</span><small>{formatDate(item.publishedAt, item.updatedAt)}</small><h3>{item.title}</h3><p>{item.summary || "Berita dan perkembangan terbaru olahraga Konawe Selatan."}</p><Link href={`/berita/${item.slug}`} aria-label={`Baca ${item.title}`}><ArrowRight/></Link></div></article>)}</div></>}
+    {featured && <><div className="featured-news"><div className="feature-image"/><div><span className="news-tag">{featured.category || "BERITA UTAMA"}</span><small><CalendarDays/> {formatDate(featured.publishedAt, featured.updatedAt)}</small><h2>{featured.title}</h2><p>{plainTextFromRichText(featured.summary) || "Informasi terbaru KONI Kabupaten Konawe Selatan."}</p><Link href={`/berita/${featured.slug}`}>Baca selengkapnya <ArrowRight size={17}/></Link></div></div><div className="article-grid">{articles.map((item, index) => <article key={item.id}><div className="article-image" style={{backgroundPosition:`${16+index*13}% center`}}/><div><span className="news-tag">{item.category || "INFORMASI"}</span><small>{formatDate(item.publishedAt, item.updatedAt)}</small><h3>{item.title}</h3><p>{plainTextFromRichText(item.summary) || "Berita dan perkembangan terbaru olahraga Konawe Selatan."}</p><Link href={`/berita/${item.slug}`} aria-label={`Baca ${item.title}`}><ArrowRight/></Link></div></article>)}</div></>}
   </div></section></SiteShell>;
 }
