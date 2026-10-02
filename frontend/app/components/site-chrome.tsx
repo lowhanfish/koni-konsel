@@ -9,7 +9,7 @@ import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 
 export const navItems = [
   ["Beranda", "/"], ["Profil", "/profil"], ["Program", "/program"],
-  ["Cabang Olahraga", "/cabang-olahraga"], ["Berita", "/berita"],
+  ["Cabang Olahraga", "/cabang-olahraga"], ["Berita", "/berita"], ["Pengumuman", "/pengumuman"],
   ["Galeri", "/galeri"], ["Prestasi", "/prestasi"], ["Kontak", "/kontak"],
 ] as const;
 
@@ -29,7 +29,7 @@ export function SiteHeader() {
     <div className="container header-inner">
       <Brand />
       <nav className={open ? "nav-links open" : "nav-links"} aria-label="Navigasi utama">
-        {navItems.map(([label, href]) => <Link className={pathname === href ? "active" : ""} key={href} href={href} onClick={() => setOpen(false)}>{label}</Link>)}
+        {navItems.map(([label, href]) => <Link className={pathname === href || (href !== "/" && pathname.startsWith(`${href}/`)) ? "active" : ""} key={href} href={href} onClick={() => setOpen(false)}>{label}</Link>)}
       </nav>
       <div className="header-actions"><Link className="icon-button" href="/berita" aria-label="Cari berita"><Search size={17} /></Link><Link className="button button-small" href="/kontak">Hubungi Kami</Link><button className="menu-button" onClick={() => setOpen(!open)} aria-label="Buka menu" aria-expanded={open}>{open ? <X /> : <Menu />}</button></div>
     </div>

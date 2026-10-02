@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const [data, total, draft, published, active, scheduled, archived] = await prisma.$transaction([
       prisma.contentItem.findMany({
         where,
-        orderBy: { updatedAt: "desc" },
+        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),

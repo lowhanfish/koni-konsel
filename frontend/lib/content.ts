@@ -1,4 +1,4 @@
-export const contentKinds = ["NEWS", "PROGRAM", "SPORT_BRANCH", "GALLERY", "ACHIEVEMENT"] as const;
+export const contentKinds = ["NEWS", "ANNOUNCEMENT", "PROGRAM", "SPORT_BRANCH", "GALLERY", "ACHIEVEMENT"] as const;
 export const contentStatuses = ["DRAFT", "PUBLISHED", "ACTIVE", "SCHEDULED", "ARCHIVED"] as const;
 
 export type ContentKind = (typeof contentKinds)[number];
@@ -38,8 +38,22 @@ export function getContentSource(metadata: unknown) {
   return { sourceUrl, sourceTitle };
 }
 
+export function getContentImage(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const imageUrl = "imageUrl" in metadata ? metadata.imageUrl : undefined;
+  const imageAlt = "imageAlt" in metadata ? metadata.imageAlt : undefined;
+  const imageCredit = "imageCredit" in metadata ? metadata.imageCredit : undefined;
+  if (typeof imageUrl !== "string" || !imageUrl) return null;
+  return {
+    imageUrl,
+    imageAlt: typeof imageAlt === "string" ? imageAlt : "Dokumentasi berita",
+    imageCredit: typeof imageCredit === "string" ? imageCredit : null,
+  };
+}
+
 export const sectionKindMap: Record<string, ContentKind | undefined> = {
   berita: "NEWS",
+  pengumuman: "ANNOUNCEMENT",
   program: "PROGRAM",
   "cabang-olahraga": "SPORT_BRANCH",
   galeri: "GALLERY",

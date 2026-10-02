@@ -37,7 +37,7 @@ export function useContentItem(id?: string) {
   });
 }
 
-type CreateContentInput = Pick<ContentItem, "kind" | "title" | "status"> & Partial<Pick<ContentItem, "category" | "summary">>;
+type CreateContentInput = Pick<ContentItem, "kind" | "title" | "status"> & Partial<Pick<ContentItem, "category" | "summary" | "metadata">> & { publishedAt?: string | Date | null };
 
 export function useCreateContent() {
   const queryClient = useQueryClient();
@@ -47,7 +47,7 @@ export function useCreateContent() {
   });
 }
 
-type UpdateContentInput = Partial<Pick<ContentItem, "title" | "category" | "summary" | "status">>;
+type UpdateContentInput = Partial<Pick<ContentItem, "title" | "category" | "summary" | "status" | "metadata">> & { publishedAt?: string | Date | null };
 
 export function useUpdateContent() {
   const queryClient = useQueryClient();

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft, CalendarDays, Check, CircleHelp, Download,
-  AlertTriangle, Dumbbell, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
+  AlertTriangle, Bell, Dumbbell, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
   Newspaper, Pencil, Plus, Search, Settings, Trash2, Trophy, Users, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -12,7 +12,7 @@ import { useContentItem, useContentList, useCreateContent, useDeleteContent, use
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMessagesList } from "@/hooks/use-messages";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { contentStatuses, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
+import { contentStatuses, getContentImage, getContentSource, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
 import { contentFormSchema } from "@/lib/validation/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
 import { LogoutButton } from "./logout-button";
@@ -24,18 +24,20 @@ import { RichTextContent } from "../components/rich-text-content";
 
 const menus = [
   ["Dashboard", LayoutDashboard, "/admin"], ["Berita", Newspaper, "/admin/berita"],
+  ["Pengumuman", Bell, "/admin/pengumuman"],
   ["Program", CalendarDays, "/admin/program"], ["Cabang Olahraga", Dumbbell, "/admin/cabang-olahraga"],
   ["Galeri", GalleryHorizontal, "/admin/galeri"], ["Prestasi", Trophy, "/admin/prestasi"],
   ["Pesan Masuk", Mail, "/admin/pesan-masuk"], ["Pengguna", Users, "/admin/pengguna"],
   ["Pengaturan", Settings, "/admin/pengaturan"],
 ] as const;
 
-type SectionKey = "berita" | "program" | "cabang-olahraga" | "galeri" | "prestasi" | "pesan-masuk" | "pengguna" | "pengaturan";
+type SectionKey = "berita" | "pengumuman" | "program" | "cabang-olahraga" | "galeri" | "prestasi" | "pesan-masuk" | "pengguna" | "pengaturan";
 
 const configs: Record<SectionKey, {
   title: string; description: string; button: string; icon: typeof Newspaper; stats: string[][]; rows: string[][];
 }> = {
   berita: { title: "Berita", description: "Kelola artikel, pengumuman, dan informasi yang tampil di website.", button: "Tambah Berita", icon: Newspaper, stats: [["0", "Total berita"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
+  pengumuman: { title: "Pengumuman", description: "Kelola pemberitahuan resmi, agenda, dan informasi penting KONI.", button: "Tambah Pengumuman", icon: Bell, stats: [["0", "Total pengumuman"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   program: { title: "Program", description: "Atur program pembinaan, jadwal, sasaran, dan periode pelaksanaan.", button: "Tambah Program", icon: CalendarDays, stats: [["0", "Total program"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   "cabang-olahraga": { title: "Cabang Olahraga", description: "Kelola data pengurus, atlet, pelatih, dan status cabang olahraga.", button: "Tambah Cabor", icon: Dumbbell, stats: [["0", "Total cabang"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
   galeri: { title: "Galeri", description: "Kelola album, foto, dan video dokumentasi kegiatan KONI.", button: "Tambah Album", icon: GalleryHorizontal, stats: [["0", "Total album"], ["—", "Terbit/aktif"], ["—", "Draf"], ["—", "Terjadwal/arsip"]], rows: [] },
@@ -91,6 +93,10 @@ export function AdminSection({ section }: { section: SectionKey }) {
     [String(statusCounts.DRAFT ?? 0), config.stats[2][1]],
     [String((statusCounts.SCHEDULED ?? 0) + (statusCounts.ARCHIVED ?? 0)), config.stats[3][1]],
   ] : config.stats;
+  const editingSource = getContentSource(editing?.metadata);
+  const editingImage = getContentImage(editing?.metadata);
+  const previewSource = getContentSource(preview.data?.data.metadata);
+  const previewImage = getContentImage(preview.data?.data.metadata);
 
   function showToast(message: string) {
     setToast(message);
@@ -105,16 +111,28 @@ export function AdminSection({ section }: { section: SectionKey }) {
       return;
     }
     const form = new FormData(event.currentTarget);
+    const isNews = section === "berita";
+    const hasPublishDate = isNews || section === "pengumuman";
+    const publishedDate = String(form.get("publishedAt") || "");
     const input = {
       title: String(form.get("title") || ""),
       category: String(form.get("category") || "") || null,
       status: String(form.get("status") || "DRAFT") as ContentStatus,
       summary: String(form.get("summary") || "") || null,
+      ...(hasPublishDate ? { publishedAt: publishedDate ? new Date(`${publishedDate}T00:00:00+08:00`) : undefined } : {}),
+      ...(isNews ? {
+        metadata: {
+          sourceTitle: String(form.get("sourceTitle") || ""),
+          sourceUrl: String(form.get("sourceUrl") || ""),
+          imageUrl: String(form.get("imageUrl") || ""),
+          imageAlt: String(form.get("imageAlt") || ""),
+          imageCredit: String(form.get("imageCredit") || "") || undefined,
+        },
+      } : {}),
     };
     const parsed = contentFormSchema.safeParse(input);
     if (!parsed.success) {
-      const fields = parsed.error.flatten().fieldErrors;
-      setFormErrors(Object.fromEntries(Object.entries(fields).map(([name, messages]) => [name, messages?.[0] ?? "Data tidak valid"])));
+      setFormErrors(Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path.at(-1) ?? "form"), issue.message])));
       return;
     }
     setFormErrors({});
@@ -190,7 +208,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
       <aside className={sidebarOpen ? "admin-sidebar open" : "admin-sidebar"}>
         <div className="admin-brand"><Image src="/assets/logo-koni.png" alt="KONI" width={46} height={46} /><div><strong>KONI</strong><span>ADMIN PANEL</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Tutup menu"><X /></button></div>
         <div className="admin-org"><Image src="/assets/logo-konawe-selatan.png" alt="Kabupaten Konawe Selatan" width={34} height={40} /><div><small>ORGANISASI</small><strong>KONI Konawe Selatan</strong></div></div>
-        <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(6).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span>{label === "Pesan Masuk" && Boolean(messageSummary.data?.meta.statusCounts.NEW) && <b>{messageSummary.data?.meta.statusCounts.NEW}</b>}</Link>)}</nav>
+        <nav className="admin-nav"><small>MENU UTAMA</small>{menus.slice(0, 7).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span></Link>)}<small>MANAJEMEN</small>{menus.slice(7).map(([label, MenuIcon, href]) => <Link className={href === `/admin/${section}` ? "active" : ""} key={href} href={href}><MenuIcon /><span>{label}</span>{label === "Pesan Masuk" && Boolean(messageSummary.data?.meta.statusCounts.NEW) && <b>{messageSummary.data?.meta.statusCounts.NEW}</b>}</Link>)}</nav>
         <div className="admin-help"><CircleHelp /><strong>Panel pengelolaan</strong><span>Gunakan menu di atas untuk mengelola data website.</span></div>
         <Link className="admin-back" href="/"><ArrowLeft /> Kembali ke Website</Link>
         <LogoutButton />
@@ -205,11 +223,14 @@ export function AdminSection({ section }: { section: SectionKey }) {
           {section === "pesan-masuk" ? <MessagesPanel key={debouncedQuery} query={debouncedQuery} canDelete={canDelete} showToast={showToast} /> : section === "pengguna" ? <UsersPanel key={debouncedQuery} query={debouncedQuery} allowed={role === "SUPER_ADMIN"} currentUserId={currentUser.data?.data.id} showToast={showToast} /> : section === "pengaturan" ? <SettingsPanel allowed={role === "SUPER_ADMIN"} showToast={showToast} /> : (
             <section className="admin-panel section-table-panel">
               <div className="panel-head"><div><h2>Daftar {config.title}</h2><p>{total} data ditemukan{query !== debouncedQuery ? " · mencari…" : ""}</p></div><div className="section-filters"><select value={status} onChange={(event) => setStatus(event.target.value as ContentStatus | "ALL")} disabled={!kind}><option value="ALL">Semua Status</option>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></div></div>
-              <div className="admin-table-wrap"><table><thead><tr><th>JUDUL / NAMA</th><th>KATEGORI</th><th>DIPERBARUI</th><th>STATUS</th><th>DILIHAT</th><th /></tr></thead><tbody>
+              <div className="admin-table-wrap"><table><thead><tr><th>JUDUL / NAMA</th><th>KATEGORI</th><th>{section === "berita" || section === "pengumuman" ? "TANGGAL TERBIT" : "DIPERBARUI"}</th><th>STATUS</th><th>DILIHAT</th><th /></tr></thead><tbody>
                 {kind && content.isPending && <tr><td colSpan={6}>Memuat data…</td></tr>}
                 {kind && content.isError && <tr><td colSpan={6}>Gagal memuat data. Pastikan MySQL berjalan.</td></tr>}
                 {kind && !content.isPending && rows.length === 0 && <tr><td colSpan={6}>Belum ada data yang cocok.</td></tr>}
-                {kind ? contentRows.map((item, index) => <tr key={item.id}><td><div className="section-primary-cell"><span className={`row-avatar avatar-${index % 5}`}><Icon /></span><strong>{item.title}</strong></div></td><td>{item.category || "—"}</td><td>{formatDate(item.updatedAt)}</td><td><span className={item.status === "DRAFT" || item.status === "SCHEDULED" ? "status-draft" : "status-live"}><i />{statusLabels[item.status]}</span></td><td>{item.viewCount.toLocaleString("id-ID")}</td><td><div className="row-actions"><button aria-label={`Lihat ${item.title}`} onClick={() => setPreviewId(item.id)}><Eye /></button>{canEdit && <button aria-label={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil /></button>}{canDelete && <button aria-label={`Hapus ${item.title}`} onClick={() => setDeleteCandidate(item)}><Trash2 /></button>}</div></td></tr>) : localRows.map((row, index) => <tr key={row[0]}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cellIndex === 0 ? <div className="section-primary-cell"><span className={`row-avatar avatar-${index}`}><Icon /></span><strong>{cell}</strong></div> : cell}</td>)}<td>—</td></tr>)}
+                {kind ? contentRows.map((item, index) => {
+                  const itemImage = getContentImage(item.metadata);
+                  return <tr key={item.id}><td><div className="section-primary-cell">{itemImage ? <span className="row-avatar news-row-image" style={{ backgroundImage: `url("${itemImage.imageUrl}")` }} role="img" aria-label={itemImage.imageAlt}/> : <span className={`row-avatar avatar-${index % 5}`}><Icon /></span>}<strong>{item.title}</strong></div></td><td>{item.category || "—"}</td><td>{formatDate(section === "berita" || section === "pengumuman" ? item.publishedAt ?? item.updatedAt : item.updatedAt)}</td><td><span className={item.status === "DRAFT" || item.status === "SCHEDULED" ? "status-draft" : "status-live"}><i />{statusLabels[item.status]}</span></td><td>{item.viewCount.toLocaleString("id-ID")}</td><td><div className="row-actions"><button aria-label={`Lihat ${item.title}`} onClick={() => setPreviewId(item.id)}><Eye /></button>{canEdit && <button aria-label={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil /></button>}{canDelete && <button aria-label={`Hapus ${item.title}`} onClick={() => setDeleteCandidate(item)}><Trash2 /></button>}</div></td></tr>;
+                }) : localRows.map((row, index) => <tr key={row[0]}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cellIndex === 0 ? <div className="section-primary-cell"><span className={`row-avatar avatar-${index}`}><Icon /></span><strong>{cell}</strong></div> : cell}</td>)}<td>—</td></tr>)}
               </tbody></table></div>
               <div className="table-footer"><span>Menampilkan {rows.length} dari {total} data</span>{kind && <div><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1}>‹</button><button className="active" aria-current="page" disabled>{page}</button><button onClick={() => setPage(page + 1)} disabled={page >= (content.data?.meta.pageCount ?? 1)}>›</button></div>}</div>
             </section>
@@ -217,8 +238,28 @@ export function AdminSection({ section }: { section: SectionKey }) {
         </div>
       </section>
 
-      {modal && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setModal(false)}><form key={editing?.id ?? "create"} className="admin-modal section-modal" onSubmit={save} noValidate><div className="modal-head"><div><span><Icon /></span><div><h2>{editing ? `Edit ${config.title}` : config.button}</h2><p>Data akan disimpan ke database MySQL.</p></div></div><button type="button" onClick={() => setModal(false)}><X /></button></div><label>Nama atau judul<input name="title" defaultValue={editing?.title} aria-invalid={Boolean(formErrors.title)} placeholder={`Masukkan ${config.title.toLowerCase()}`} />{formErrors.title && <small className="field-error">{formErrors.title}</small>}</label><div className="modal-row"><label>Kategori<input name="category" defaultValue={editing?.category ?? ""} aria-invalid={Boolean(formErrors.category)} placeholder="Umum" />{formErrors.category && <small className="field-error">{formErrors.category}</small>}</label><label>Status<select name="status" defaultValue={editing?.status ?? "DRAFT"}>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select>{formErrors.status && <small className="field-error">{formErrors.status}</small>}</label></div><label>Deskripsi atau detail<RichTextEditor name="summary" defaultValue={editing?.summary} error={formErrors.summary} /></label><div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={createContent.isPending || updateContent.isPending}>{createContent.isPending || updateContent.isPending ? "Menyimpan…" : editing ? "Simpan Perubahan" : "Simpan Data"}</button></div></form></div>}
-      {previewId && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPreviewId(undefined)}><section className="admin-modal detail-modal"><div className="modal-head"><div><span><Eye /></span><div><h2>Detail {config.title}</h2><p>Pratinjau data tersimpan.</p></div></div><button type="button" onClick={() => setPreviewId(undefined)}><X /></button></div>{preview.isPending ? <p>Memuat detail…</p> : preview.isError ? <p>Detail gagal dimuat.</p> : preview.data && <div className="detail-grid"><div><small>Judul</small><strong>{preview.data.data.title}</strong></div><div><small>Kategori</small><span>{preview.data.data.category || "—"}</span></div><div><small>Status</small><span>{statusLabels[preview.data.data.status]}</span></div><div><small>Slug</small><code>{preview.data.data.slug}</code></div><div className="detail-wide"><small>Deskripsi</small><RichTextContent content={preview.data.data.summary} /></div><div><small>Dibuat</small><span>{formatDate(preview.data.data.createdAt)}</span></div><div><small>Diperbarui</small><span>{formatDate(preview.data.data.updatedAt)}</span></div></div>}</section></div>}
+      {modal && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setModal(false)}><form key={editing?.id ?? "create"} className="admin-modal section-modal" onSubmit={save} noValidate>
+        <div className="modal-head"><div><span><Icon /></span><div><h2>{editing ? `Edit ${config.title}` : config.button}</h2><p>Data akan disimpan ke database MySQL.</p></div></div><button type="button" onClick={() => setModal(false)}><X /></button></div>
+        <label>Nama atau judul<input name="title" defaultValue={editing?.title} aria-invalid={Boolean(formErrors.title)} placeholder={`Masukkan ${config.title.toLowerCase()}`} />{formErrors.title && <small className="field-error">{formErrors.title}</small>}</label>
+        <div className="modal-row"><label>Kategori<input name="category" defaultValue={editing?.category ?? ""} aria-invalid={Boolean(formErrors.category)} placeholder="Umum" />{formErrors.category && <small className="field-error">{formErrors.category}</small>}</label><label>Status<select name="status" defaultValue={editing?.status ?? "DRAFT"}>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select>{formErrors.status && <small className="field-error">{formErrors.status}</small>}</label></div>
+        {section === "pengumuman" && <label>Tanggal terbit<input name="publishedAt" type="date" defaultValue={editing?.publishedAt?.slice(0, 10)} /></label>}
+        {section === "berita" && <div className="news-source-fields">
+          <div className="modal-row"><label>Tanggal terbit<input name="publishedAt" type="date" defaultValue={editing?.publishedAt?.slice(0, 10)} /></label><label>Kredit foto<input name="imageCredit" defaultValue={editingImage?.imageCredit ?? ""} placeholder="Foto: Nama sumber" /></label></div>
+          <label>URL gambar<input name="imageUrl" defaultValue={editingImage?.imageUrl ?? ""} aria-invalid={Boolean(formErrors.imageUrl)} placeholder="/assets/news/nama-gambar.jpg atau https://…" />{formErrors.imageUrl && <small className="field-error">{formErrors.imageUrl}</small>}</label>
+          <label>Teks alternatif gambar<input name="imageAlt" defaultValue={editingImage?.imageAlt ?? ""} aria-invalid={Boolean(formErrors.imageAlt)} placeholder="Jelaskan isi gambar secara singkat" />{formErrors.imageAlt && <small className="field-error">{formErrors.imageAlt}</small>}</label>
+          <label>Nama sumber<input name="sourceTitle" defaultValue={editingSource?.sourceTitle ?? ""} aria-invalid={Boolean(formErrors.sourceTitle)} placeholder="Nama media — Judul artikel" />{formErrors.sourceTitle && <small className="field-error">{formErrors.sourceTitle}</small>}</label>
+          <label>URL sumber<input name="sourceUrl" type="url" defaultValue={editingSource?.sourceUrl ?? ""} aria-invalid={Boolean(formErrors.sourceUrl)} placeholder="https://…" />{formErrors.sourceUrl && <small className="field-error">{formErrors.sourceUrl}</small>}</label>
+        </div>}
+        <label>Deskripsi atau detail<RichTextEditor name="summary" defaultValue={editing?.summary} error={formErrors.summary} /></label>
+        <div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={createContent.isPending || updateContent.isPending}>{createContent.isPending || updateContent.isPending ? "Menyimpan…" : editing ? "Simpan Perubahan" : "Simpan Data"}</button></div>
+      </form></div>}
+      {previewId && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPreviewId(undefined)}><section className="admin-modal detail-modal"><div className="modal-head"><div><span><Eye /></span><div><h2>Detail {config.title}</h2><p>Pratinjau data tersimpan.</p></div></div><button type="button" onClick={() => setPreviewId(undefined)}><X /></button></div>{preview.isPending ? <p>Memuat detail…</p> : preview.isError ? <p>Detail gagal dimuat.</p> : preview.data && <div className="detail-grid">
+        {previewImage && <figure className="detail-wide admin-news-image"><div style={{ backgroundImage: `url("${previewImage.imageUrl}")` }} role="img" aria-label={previewImage.imageAlt}/>{previewImage.imageCredit && <figcaption>{previewImage.imageCredit}</figcaption>}</figure>}
+        <div><small>Judul</small><strong>{preview.data.data.title}</strong></div><div><small>Kategori</small><span>{preview.data.data.category || "—"}</span></div><div><small>Status</small><span>{statusLabels[preview.data.data.status]}</span></div><div><small>Slug</small><code>{preview.data.data.slug}</code></div>
+        {preview.data.data.publishedAt && <div><small>Tanggal terbit</small><span>{formatDate(preview.data.data.publishedAt)}</span></div>}
+        {previewSource && <div className="detail-wide"><small>Sumber</small><a href={previewSource.sourceUrl} target="_blank" rel="noreferrer">{previewSource.sourceTitle}</a></div>}
+        <div className="detail-wide"><small>Deskripsi</small><RichTextContent content={preview.data.data.summary} /></div><div><small>Dibuat</small><span>{formatDate(preview.data.data.createdAt)}</span></div><div><small>Diperbarui</small><span>{formatDate(preview.data.data.updatedAt)}</span></div>
+      </div>}</section></div>}
       {deleteCandidate && <div className="admin-modal-backdrop"><section className="admin-modal confirm-modal"><span><AlertTriangle /></span><h2>Hapus konten?</h2><p>“{deleteCandidate.title}” akan dihapus permanen dan tidak dapat dipulihkan.</p><div className="modal-actions"><button type="button" onClick={() => setDeleteCandidate(null)}>Batal</button><button className="danger-button" type="button" onClick={remove} disabled={deleteContent.isPending}>{deleteContent.isPending ? "Menghapus…" : "Hapus Permanen"}</button></div></section></div>}
       {toast && <div className="admin-toast"><Check /><span>{toast}</span></div>}
     </main>
