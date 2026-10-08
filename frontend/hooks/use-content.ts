@@ -15,6 +15,23 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export type UploadedMedia = { id: string; name: string; mimeType: string; size: number; url: string };
+
+export async function uploadMedia(file: File, purpose: "image" | "attachment") {
+  const body = new FormData();
+  body.set("file", file);
+  body.set("purpose", purpose);
+  const response = await fetch("/api/media", { method: "POST", body });
+  const result = (await response.json().catch(() => null)) as { data?: UploadedMedia; error?: string } | null;
+  if (!response.ok || !result?.data) throw new Error(result?.error || "Gagal mengunggah file");
+  return result.data;
+}
+
+export async function deleteMedia(id: string) {
+  const response = await fetch(`/api/media/${id}`, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) throw new Error("Gagal membersihkan file unggahan");
+}
+
 export function useContentList({ enabled = true, ...query }: ContentQuery) {
   const params = new URLSearchParams();
   if (query.kind) params.set("kind", query.kind);

@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 import { usePublicContent } from "@/hooks/use-public-content";
+import { getContentImage } from "@/lib/content";
 import { excerptFromRichText } from "@/lib/rich-text";
 
 const quickLinks = [
@@ -76,7 +77,17 @@ export default function Home() {
   const hasSocialLinks = socialLinks.some(([url]) => Boolean(url));
   const programCards = programContent.data ? programContent.data.data.map((item, index) => ({ title: item.title, text: excerptFromRichText(item.summary, 150) || "Program pembinaan KONI Konawe Selatan.", position: `${18 + index * 19}%`, href: `/program/${item.slug}` })) : programs.map((item) => ({ ...item, href: "/program" }));
   const sportCards = branchContent.data ? branchContent.data.data.map((item, index) => ({ icon: sports[index % sports.length].icon, name: item.title, href: `/cabang-olahraga/${item.slug}` })) : sports.map((item) => ({ ...item, href: "/cabang-olahraga" }));
-  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => ({ date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)), title: item.title, excerpt: excerptFromRichText(item.summary, 190) || "Informasi terbaru KONI Kabupaten Konawe Selatan.", position: `${14 + index * 26}%`, href: `/berita/${item.slug}` })) : news.map((item) => ({ ...item, href: "/berita" }));
+  const newsCards = newsContent.data ? newsContent.data.data.map((item, index) => {
+    const image = getContentImage(item.metadata);
+    return {
+      date: new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(item.publishedAt ?? item.updatedAt)),
+      title: item.title,
+      excerpt: excerptFromRichText(item.summary, 190) || "Informasi terbaru KONI Kabupaten Konawe Selatan.",
+      position: `${14 + index * 26}%`,
+      href: `/berita/${item.slug}`,
+      image,
+    };
+  }) : news.map((item) => ({ ...item, href: "/berita", image: null }));
   const galleryItems = galleryContent.data ? galleryContent.data.data : [];
   const galleryFilterOptions = galleryContent.data ? ["Semua", ...new Set(galleryItems.map((item) => item.category).filter((value): value is string => Boolean(value)))] : galleryFilters;
   const achievements = achievementContent.data?.data ?? [];
@@ -159,7 +170,29 @@ export default function Home() {
 
       <section className="section" id="berita"><div className="container">
         <div className="title-row"><SectionTitle>BERITA TERBARU</SectionTitle><Link className="outline-link" href="/berita">Lihat Semua Berita <ArrowRight size={16} /></Link></div>
-        <div className="news-grid">{newsCards.map((item) => <article className="news-card" key={item.title}><div className="sports-image news-image" style={{ backgroundPosition: `${item.position} center` }} /><div className="news-body"><time>{item.date}</time><h3>{item.title}</h3><p>{item.excerpt}</p><Link href={item.href} aria-label={`Baca ${item.title}`}><ArrowRight size={18} /></Link></div></article>)}</div>
+        <div className="news-grid">
+          {newsCards.map((item) => (
+            <article className="news-card" key={item.title}>
+              <div
+                className="sports-image news-image"
+                style={{
+                  backgroundPosition: item.image ? "center" : `${item.position} center`,
+                  backgroundSize: "cover",
+                  backgroundRepeat: "no-repeat",
+                  ...(item.image ? { backgroundImage: `url("${item.image.imageUrl}")` } : {}),
+                }}
+                role={item.image ? "img" : undefined}
+                aria-label={item.image?.imageAlt}
+              />
+              <div className="news-body">
+                <time>{item.date}</time>
+                <h3>{item.title}</h3>
+                <p>{item.excerpt}</p>
+                <Link href={item.href} aria-label={`Baca ${item.title}`}><ArrowRight size={18} /></Link>
+              </div>
+            </article>
+          ))}
+        </div>
       </div></section>
 
       <section className="section gallery-section" id="galeri"><div className="container">

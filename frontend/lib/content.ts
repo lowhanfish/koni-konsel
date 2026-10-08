@@ -41,13 +41,32 @@ export function getContentSource(metadata: unknown) {
 export function getContentImage(metadata: unknown) {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
   const imageUrl = "imageUrl" in metadata ? metadata.imageUrl : undefined;
+  const imageFileId = "imageFileId" in metadata ? metadata.imageFileId : undefined;
   const imageAlt = "imageAlt" in metadata ? metadata.imageAlt : undefined;
   const imageCredit = "imageCredit" in metadata ? metadata.imageCredit : undefined;
   if (typeof imageUrl !== "string" || !imageUrl) return null;
   return {
     imageUrl,
+    imageFileId: typeof imageFileId === "string" ? imageFileId : null,
     imageAlt: typeof imageAlt === "string" ? imageAlt : "Dokumentasi berita",
     imageCredit: typeof imageCredit === "string" ? imageCredit : null,
+  };
+}
+
+export function getContentAttachment(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const attachmentUrl = "attachmentUrl" in metadata ? metadata.attachmentUrl : undefined;
+  const attachmentFileId = "attachmentFileId" in metadata ? metadata.attachmentFileId : undefined;
+  const attachmentName = "attachmentName" in metadata ? metadata.attachmentName : undefined;
+  const attachmentMimeType = "attachmentMimeType" in metadata ? metadata.attachmentMimeType : undefined;
+  const attachmentSize = "attachmentSize" in metadata ? metadata.attachmentSize : undefined;
+  if (typeof attachmentUrl !== "string" || !attachmentUrl || typeof attachmentName !== "string") return null;
+  return {
+    attachmentUrl,
+    attachmentFileId: typeof attachmentFileId === "string" ? attachmentFileId : null,
+    attachmentName,
+    attachmentMimeType: typeof attachmentMimeType === "string" ? attachmentMimeType : "application/octet-stream",
+    attachmentSize: typeof attachmentSize === "number" ? attachmentSize : null,
   };
 }
 

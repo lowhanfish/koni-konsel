@@ -5,14 +5,14 @@ import Link from "next/link";
 import {
   ArrowLeft, CalendarDays, Check, CircleHelp, Download,
   AlertTriangle, Bell, Dumbbell, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
-  Newspaper, Pencil, Plus, Search, Settings, Trash2, Trophy, Users, X,
+  Newspaper, Paperclip, Pencil, Plus, Search, Settings, Trash2, Trophy, Upload, Users, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useContentItem, useContentList, useCreateContent, useDeleteContent, useUpdateContent } from "@/hooks/use-content";
+import { deleteMedia, uploadMedia, useContentItem, useContentList, useCreateContent, useDeleteContent, useUpdateContent } from "@/hooks/use-content";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMessagesList } from "@/hooks/use-messages";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { contentStatuses, getContentImage, getContentSource, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
+import { contentStatuses, getContentAttachment, getContentImage, getContentSource, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
 import { contentFormSchema } from "@/lib/validation/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
 import { LogoutButton } from "./logout-button";
@@ -60,6 +60,9 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const [previewId, setPreviewId] = useState<string>();
   const [deleteCandidate, setDeleteCandidate] = useState<ContentItem | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [selectedImageName, setSelectedImageName] = useState("");
+  const [selectedAttachmentName, setSelectedAttachmentName] = useState("");
   const [toast, setToast] = useState("");
   const { query, status, page, setQuery, setStatus, setPage, reset } = useAdminContentStore();
   const debouncedQuery = useDebouncedValue(query, 350);
@@ -95,8 +98,10 @@ export function AdminSection({ section }: { section: SectionKey }) {
   ] : config.stats;
   const editingSource = getContentSource(editing?.metadata);
   const editingImage = getContentImage(editing?.metadata);
+  const editingAttachment = getContentAttachment(editing?.metadata);
   const previewSource = getContentSource(preview.data?.data.metadata);
   const previewImage = getContentImage(preview.data?.data.metadata);
+  const previewAttachment = getContentAttachment(preview.data?.data.metadata);
 
   function showToast(message: string) {
     setToast(message);
@@ -112,39 +117,76 @@ export function AdminSection({ section }: { section: SectionKey }) {
     }
     const form = new FormData(event.currentTarget);
     const isNews = section === "berita";
+    const isAnnouncement = section === "pengumuman";
     const hasPublishDate = isNews || section === "pengumuman";
     const publishedDate = String(form.get("publishedAt") || "");
+    const imageFile = form.get("imageFile");
+    const attachmentFile = form.get("attachmentFile");
+    const selectedImage = imageFile instanceof File && imageFile.size > 0 ? imageFile : null;
+    const selectedAttachment = attachmentFile instanceof File && attachmentFile.size > 0 ? attachmentFile : null;
+    const removeAttachment = form.get("removeAttachment") === "on";
+    if (isNews && !selectedImage && !editingImage) {
+      setFormErrors({ imageFile: "Gambar berita wajib diunggah" });
+      return;
+    }
+    const newsMetadata = isNews ? {
+      sourceTitle: String(form.get("sourceTitle") || ""),
+      sourceUrl: String(form.get("sourceUrl") || ""),
+      imageUrl: editingImage?.imageUrl ?? "/api/media/pending",
+      imageAlt: String(form.get("imageAlt") || ""),
+      imageCredit: String(form.get("imageCredit") || "") || undefined,
+      ...(editingImage?.imageFileId ? { imageFileId: editingImage.imageFileId } : {}),
+    } : undefined;
+    const announcementMetadata = isAnnouncement && editingAttachment && !removeAttachment ? {
+      attachmentUrl: editingAttachment.attachmentUrl,
+      ...(editingAttachment.attachmentFileId ? { attachmentFileId: editingAttachment.attachmentFileId } : {}),
+      attachmentName: editingAttachment.attachmentName,
+      attachmentMimeType: editingAttachment.attachmentMimeType,
+      ...(editingAttachment.attachmentSize ? { attachmentSize: editingAttachment.attachmentSize } : {}),
+    } : isAnnouncement && removeAttachment ? {} : undefined;
     const input = {
       title: String(form.get("title") || ""),
       category: String(form.get("category") || "") || null,
       status: String(form.get("status") || "DRAFT") as ContentStatus,
       summary: String(form.get("summary") || "") || null,
       ...(hasPublishDate ? { publishedAt: publishedDate ? new Date(`${publishedDate}T00:00:00+08:00`) : undefined } : {}),
-      ...(isNews ? {
-        metadata: {
-          sourceTitle: String(form.get("sourceTitle") || ""),
-          sourceUrl: String(form.get("sourceUrl") || ""),
-          imageUrl: String(form.get("imageUrl") || ""),
-          imageAlt: String(form.get("imageAlt") || ""),
-          imageCredit: String(form.get("imageCredit") || "") || undefined,
-        },
-      } : {}),
+      ...(newsMetadata ? { metadata: newsMetadata } : announcementMetadata ? { metadata: announcementMetadata } : {}),
     };
-    const parsed = contentFormSchema.safeParse(input);
-    if (!parsed.success) {
-      setFormErrors(Object.fromEntries(parsed.error.issues.map((issue) => [String(issue.path.at(-1) ?? "form"), issue.message])));
+    const initialParsed = contentFormSchema.safeParse(input);
+    if (!initialParsed.success) {
+      setFormErrors(Object.fromEntries(initialParsed.error.issues.map((issue) => [String(issue.path.at(-1) ?? "form"), issue.message])));
       return;
     }
     setFormErrors({});
+    setSaving(true);
+    let uploadedFileId: string | undefined;
     try {
-      if (editing) await updateContent.mutateAsync({ id: editing.id, input: parsed.data });
-      else await createContent.mutateAsync({ kind, ...parsed.data });
+      let finalInput = initialParsed.data;
+      if (selectedImage && newsMetadata) {
+        const uploaded = await uploadMedia(selectedImage, "image");
+        uploadedFileId = uploaded.id;
+        finalInput = contentFormSchema.parse({ ...input, metadata: { ...newsMetadata, imageUrl: uploaded.url, imageFileId: uploaded.id } });
+      } else if (selectedAttachment) {
+        const uploaded = await uploadMedia(selectedAttachment, "attachment");
+        uploadedFileId = uploaded.id;
+        finalInput = contentFormSchema.parse({
+          ...input,
+          metadata: { attachmentUrl: uploaded.url, attachmentFileId: uploaded.id, attachmentName: uploaded.name, attachmentMimeType: uploaded.mimeType, attachmentSize: uploaded.size },
+        });
+      }
+      if (editing) await updateContent.mutateAsync({ id: editing.id, input: finalInput });
+      else await createContent.mutateAsync({ kind, ...finalInput });
+      const replacedFileId = selectedImage ? editingImage?.imageFileId : selectedAttachment || removeAttachment ? editingAttachment?.attachmentFileId : null;
+      if (replacedFileId) void deleteMedia(replacedFileId).catch(() => undefined);
       event.currentTarget.reset();
       setModal(false);
       setEditing(null);
       showToast(`${config.title} berhasil ${editing ? "diperbarui" : "disimpan"}`);
     } catch (error) {
+      if (uploadedFileId) await deleteMedia(uploadedFileId).catch(() => undefined);
       showToast(error instanceof Error ? error.message : "Gagal menyimpan konten");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -162,12 +204,18 @@ export function AdminSection({ section }: { section: SectionKey }) {
   function openCreate() {
     setEditing(null);
     setFormErrors({});
+    setSaving(false);
+    setSelectedImageName("");
+    setSelectedAttachmentName("");
     setModal(true);
   }
 
   function openEdit(item: ContentItem) {
     setEditing(item);
     setFormErrors({});
+    setSaving(false);
+    setSelectedImageName("");
+    setSelectedAttachmentName("");
     setModal(true);
   }
 
@@ -242,22 +290,30 @@ export function AdminSection({ section }: { section: SectionKey }) {
         <div className="modal-head"><div><span><Icon /></span><div><h2>{editing ? `Edit ${config.title}` : config.button}</h2><p>Data akan disimpan ke database MySQL.</p></div></div><button type="button" onClick={() => setModal(false)}><X /></button></div>
         <label>Nama atau judul<input name="title" defaultValue={editing?.title} aria-invalid={Boolean(formErrors.title)} placeholder={`Masukkan ${config.title.toLowerCase()}`} />{formErrors.title && <small className="field-error">{formErrors.title}</small>}</label>
         <div className="modal-row"><label>Kategori<input name="category" defaultValue={editing?.category ?? ""} aria-invalid={Boolean(formErrors.category)} placeholder="Umum" />{formErrors.category && <small className="field-error">{formErrors.category}</small>}</label><label>Status<select name="status" defaultValue={editing?.status ?? "DRAFT"}>{contentStatuses.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select>{formErrors.status && <small className="field-error">{formErrors.status}</small>}</label></div>
-        {section === "pengumuman" && <label>Tanggal terbit<input name="publishedAt" type="date" defaultValue={editing?.publishedAt?.slice(0, 10)} /></label>}
+        {section === "pengumuman" && <div className="announcement-upload-fields">
+          <label>Tanggal terbit<input name="publishedAt" type="date" defaultValue={editing?.publishedAt?.slice(0, 10)} /></label>
+          <label className="upload-box"><Upload /><strong>{selectedAttachmentName || (editingAttachment ? "Ganti lampiran" : "Unggah lampiran")}</strong><span>PDF, JPG, PNG, WebP, atau GIF · maksimal 10 MB</span><input name="attachmentFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif" aria-describedby="attachment-help" onChange={(event) => setSelectedAttachmentName(event.target.files?.[0]?.name ?? "")} /></label>
+          {editingAttachment && <div className="current-upload"><Paperclip /><div><small>Lampiran saat ini</small><a href={editingAttachment.attachmentUrl} target="_blank" rel="noreferrer">{editingAttachment.attachmentName}</a></div><label><input type="checkbox" name="removeAttachment" /> Hapus</label></div>}
+          {formErrors.attachmentFile && <small id="attachment-help" className="field-error">{formErrors.attachmentFile}</small>}
+        </div>}
         {section === "berita" && <div className="news-source-fields">
           <div className="modal-row"><label>Tanggal terbit<input name="publishedAt" type="date" defaultValue={editing?.publishedAt?.slice(0, 10)} /></label><label>Kredit foto<input name="imageCredit" defaultValue={editingImage?.imageCredit ?? ""} placeholder="Foto: Nama sumber" /></label></div>
-          <label>URL gambar<input name="imageUrl" defaultValue={editingImage?.imageUrl ?? ""} aria-invalid={Boolean(formErrors.imageUrl)} placeholder="/assets/news/nama-gambar.jpg atau https://…" />{formErrors.imageUrl && <small className="field-error">{formErrors.imageUrl}</small>}</label>
+          <label className="upload-box"><Upload /><strong>{selectedImageName || (editingImage ? "Ganti gambar berita" : "Unggah gambar berita")}</strong><span>JPG, PNG, WebP, atau GIF · maksimal 5 MB</span><input name="imageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" aria-invalid={Boolean(formErrors.imageFile)} onChange={(event) => setSelectedImageName(event.target.files?.[0]?.name ?? "")} /></label>
+          {editingImage && <div className="current-upload image-current"><span style={{ backgroundImage: `url("${editingImage.imageUrl}")` }} role="img" aria-label={editingImage.imageAlt} /><div><small>Gambar saat ini</small><strong>{editingImage.imageAlt}</strong></div></div>}
+          {formErrors.imageFile && <small className="field-error">{formErrors.imageFile}</small>}
           <label>Teks alternatif gambar<input name="imageAlt" defaultValue={editingImage?.imageAlt ?? ""} aria-invalid={Boolean(formErrors.imageAlt)} placeholder="Jelaskan isi gambar secara singkat" />{formErrors.imageAlt && <small className="field-error">{formErrors.imageAlt}</small>}</label>
           <label>Nama sumber<input name="sourceTitle" defaultValue={editingSource?.sourceTitle ?? ""} aria-invalid={Boolean(formErrors.sourceTitle)} placeholder="Nama media — Judul artikel" />{formErrors.sourceTitle && <small className="field-error">{formErrors.sourceTitle}</small>}</label>
           <label>URL sumber<input name="sourceUrl" type="url" defaultValue={editingSource?.sourceUrl ?? ""} aria-invalid={Boolean(formErrors.sourceUrl)} placeholder="https://…" />{formErrors.sourceUrl && <small className="field-error">{formErrors.sourceUrl}</small>}</label>
         </div>}
         <label>Deskripsi atau detail<RichTextEditor name="summary" defaultValue={editing?.summary} error={formErrors.summary} /></label>
-        <div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={createContent.isPending || updateContent.isPending}>{createContent.isPending || updateContent.isPending ? "Menyimpan…" : editing ? "Simpan Perubahan" : "Simpan Data"}</button></div>
+        <div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={saving || createContent.isPending || updateContent.isPending}>{saving || createContent.isPending || updateContent.isPending ? "Mengunggah & menyimpan…" : editing ? "Simpan Perubahan" : "Simpan Data"}</button></div>
       </form></div>}
       {previewId && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPreviewId(undefined)}><section className="admin-modal detail-modal"><div className="modal-head"><div><span><Eye /></span><div><h2>Detail {config.title}</h2><p>Pratinjau data tersimpan.</p></div></div><button type="button" onClick={() => setPreviewId(undefined)}><X /></button></div>{preview.isPending ? <p>Memuat detail…</p> : preview.isError ? <p>Detail gagal dimuat.</p> : preview.data && <div className="detail-grid">
         {previewImage && <figure className="detail-wide admin-news-image"><div style={{ backgroundImage: `url("${previewImage.imageUrl}")` }} role="img" aria-label={previewImage.imageAlt}/>{previewImage.imageCredit && <figcaption>{previewImage.imageCredit}</figcaption>}</figure>}
         <div><small>Judul</small><strong>{preview.data.data.title}</strong></div><div><small>Kategori</small><span>{preview.data.data.category || "—"}</span></div><div><small>Status</small><span>{statusLabels[preview.data.data.status]}</span></div><div><small>Slug</small><code>{preview.data.data.slug}</code></div>
         {preview.data.data.publishedAt && <div><small>Tanggal terbit</small><span>{formatDate(preview.data.data.publishedAt)}</span></div>}
         {previewSource && <div className="detail-wide"><small>Sumber</small><a href={previewSource.sourceUrl} target="_blank" rel="noreferrer">{previewSource.sourceTitle}</a></div>}
+        {previewAttachment && <div className="detail-wide preview-attachment"><small>Lampiran</small><a href={`${previewAttachment.attachmentUrl}?download=1`}><Paperclip />{previewAttachment.attachmentName} <Download /></a></div>}
         <div className="detail-wide"><small>Deskripsi</small><RichTextContent content={preview.data.data.summary} /></div><div><small>Dibuat</small><span>{formatDate(preview.data.data.createdAt)}</span></div><div><small>Diperbarui</small><span>{formatDate(preview.data.data.updatedAt)}</span></div>
       </div>}</section></div>}
       {deleteCandidate && <div className="admin-modal-backdrop"><section className="admin-modal confirm-modal"><span><AlertTriangle /></span><h2>Hapus konten?</h2><p>“{deleteCandidate.title}” akan dihapus permanen dan tidak dapat dipulihkan.</p><div className="modal-actions"><button type="button" onClick={() => setDeleteCandidate(null)}>Batal</button><button className="danger-button" type="button" onClick={remove} disabled={deleteContent.isPending}>{deleteContent.isPending ? "Menghapus…" : "Hapus Permanen"}</button></div></section></div>}

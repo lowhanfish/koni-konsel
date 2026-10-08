@@ -10,6 +10,8 @@ let cookie = "";
 let createdId = "";
 let createdMessageId = "";
 let createdUserId = "";
+let createdAnnouncementId = "";
+let uploadedMediaId = "";
 let originalSettings = null;
 
 async function request(path, init = {}) {
@@ -53,6 +55,41 @@ try {
 
   const list = await request("/api/content?kind=NEWS&page=1&pageSize=1");
   assert(list.response.ok && list.body?.meta?.statusCounts, `Daftar konten gagal (${list.response.status})`);
+
+  const uploadBody = new FormData();
+  uploadBody.set("purpose", "attachment");
+  uploadBody.set("file", new File([new TextEncoder().encode("%PDF-1.4\n%%EOF")], "lampiran-smoke.pdf", { type: "application/pdf" }));
+  const uploadResponse = await fetch(`${baseUrl}/api/media`, { method: "POST", headers: { Cookie: cookie }, body: uploadBody });
+  const upload = await uploadResponse.json().catch(() => null);
+  assert(uploadResponse.status === 201 && upload?.data?.id, `Unggah lampiran gagal (${uploadResponse.status})`);
+  uploadedMediaId = upload.data.id;
+
+  const announcement = await request("/api/content", {
+    method: "POST",
+    body: JSON.stringify({
+      kind: "ANNOUNCEMENT",
+      title: `Smoke Test Lampiran ${Date.now()}`,
+      status: "PUBLISHED",
+      summary: "<p>Pengumuman sementara untuk menguji lampiran.</p>",
+      metadata: {
+        attachmentUrl: upload.data.url,
+        attachmentFileId: upload.data.id,
+        attachmentName: upload.data.name,
+        attachmentMimeType: upload.data.mimeType,
+        attachmentSize: upload.data.size,
+      },
+    }),
+  });
+  assert(announcement.response.status === 201 && announcement.body?.data?.id, `Buat pengumuman berlampiran gagal (${announcement.response.status})`);
+  createdAnnouncementId = announcement.body.data.id;
+  const mediaResponse = await fetch(`${baseUrl}${upload.data.url}`);
+  assert(mediaResponse.ok && mediaResponse.headers.get("content-type") === "application/pdf", `Baca lampiran gagal (${mediaResponse.status})`);
+  const deleteAnnouncement = await request(`/api/content/${createdAnnouncementId}`, { method: "DELETE" });
+  assert(deleteAnnouncement.response.status === 204, `Hapus pengumuman berlampiran gagal (${deleteAnnouncement.response.status})`);
+  createdAnnouncementId = "";
+  const deletedMedia = await fetch(`${baseUrl}${upload.data.url}`);
+  assert(deletedMedia.status === 404, `File lampiran belum ikut terhapus (${deletedMedia.status})`);
+  uploadedMediaId = "";
 
   const contentTitle = `Smoke Test Admin ${Date.now()}`;
   const create = await request("/api/content", {
@@ -139,6 +176,8 @@ try {
   if (createdId) await request(`/api/content/${createdId}`, { method: "DELETE" }).catch(() => undefined);
   if (createdMessageId) await request(`/api/messages/${createdMessageId}`, { method: "DELETE" }).catch(() => undefined);
   if (createdUserId) await request(`/api/users/${createdUserId}`, { method: "DELETE" }).catch(() => undefined);
+  if (createdAnnouncementId) await request(`/api/content/${createdAnnouncementId}`, { method: "DELETE" }).catch(() => undefined);
+  if (uploadedMediaId) await request(`/api/media/${uploadedMediaId}`, { method: "DELETE" }).catch(() => undefined);
   if (originalSettings) {
     await request("/api/settings", { method: "PATCH", body: JSON.stringify(settingsPayload(originalSettings)) }).catch(() => undefined);
   }

@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser, hasRole } from "@/lib/server/auth";
 import { sanitizeRichText } from "@/lib/server/sanitize-rich-text";
+import { mediaFileIds } from "@/lib/server/media";
 import { createSlug } from "@/lib/server/slug";
 import { updateContentSchema } from "@/lib/validation/content";
 
@@ -51,8 +52,12 @@ export async function DELETE(_: NextRequest, context: RouteContext) {
   if (!user) return NextResponse.json({ error: "Belum login" }, { status: 401 });
   if (!hasRole(user, ["SUPER_ADMIN"])) return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   const { id } = await context.params;
-  const existing = await prisma.contentItem.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.contentItem.findUnique({ where: { id }, select: { id: true, metadata: true } });
   if (!existing) return NextResponse.json({ error: "Konten tidak ditemukan" }, { status: 404 });
-  await prisma.contentItem.delete({ where: { id } });
+  const fileIds = mediaFileIds(existing.metadata);
+  await prisma.$transaction([
+    prisma.contentItem.delete({ where: { id } }),
+    ...(fileIds.length ? [prisma.mediaFile.deleteMany({ where: { id: { in: fileIds } } })] : []),
+  ]);
   return new NextResponse(null, { status: 204 });
 }

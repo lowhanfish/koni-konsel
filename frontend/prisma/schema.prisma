@@ -80,6 +80,17 @@ model ContentItem {
   @@index([kind, title])
 }
 
+model MediaFile {
+  id           String   @id @default(cuid())
+  originalName String
+  mimeType     String
+  size         Int
+  data         Bytes    @db.LongBlob
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model ContactMessage {
   id        String               @id @default(cuid())
   name      String
