@@ -490,20 +490,74 @@ export function AdminSection({ section }: { section: SectionKey }) {
             <div style={{ backgroundImage: `url("${previewGallery?.imageUrl || previewImage?.imageUrl}")` }} role="img" aria-label={previewGallery?.imageAlt || previewImage?.imageAlt}/>
             {previewImage?.imageCredit && <figcaption>{previewImage.imageCredit}</figcaption>}
           </figure>
-        ) : null}
+        ) : (
+          <div className="detail-wide admin-preview-empty-media">
+            <GalleryHorizontal size={30} />
+            <div>
+              <strong>Belum Ada Berkas Media</strong>
+              <p>Dokumentasi ini belum memiliki berkas foto atau video YouTube yang disematkan.</p>
+            </div>
+            {canEdit && (
+              <button
+                type="button"
+                className="admin-primary button-small"
+                onClick={() => {
+                  const itemToEdit = preview.data?.data;
+                  setPreviewId(undefined);
+                  if (itemToEdit) openEdit(itemToEdit);
+                }}
+              >
+                <Pencil size={13} /> Edit & Unggah Media Sekarang
+              </button>
+            )}
+          </div>
+        )}
         <div><small>Judul</small><strong>{preview.data.data.title}</strong></div><div><small>Kategori</small><span>{preview.data.data.category || "—"}</span></div><div><small>Status</small><span>{statusLabels[preview.data.data.status]}</span></div><div><small>Slug</small><code>{preview.data.data.slug}</code></div>
+        {section === "galeri" && (
+          <div>
+            <small>Tipe Media</small>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: 700 }}>
+              {previewGallery?.mediaType === "VIDEO" ? <Play size={13} fill="currentColor" color="var(--red)" /> : <Camera size={13} color="var(--red)" />}
+              {previewGallery?.mediaType === "VIDEO" ? "Video (YouTube)" : "Foto Dokumentasi"}
+            </span>
+          </div>
+        )}
         {preview.data.data.publishedAt && <div><small>Tanggal terbit</small><span>{formatDate(preview.data.data.publishedAt)}</span></div>}
+        {previewGallery?.imageUrl && (
+          <div className="detail-wide preview-attachment">
+            <small>Berkas Foto</small>
+            <a href={previewGallery.imageUrl} target="_blank" rel="noreferrer">
+              <Camera size={14} /> Buka Berkas Foto di Tab Baru <ExternalLink size={12} />
+            </a>
+          </div>
+        )}
         {previewGallery?.videoUrl && (
-          <div className="detail-wide">
+          <div className="detail-wide preview-attachment">
             <small>Video YouTube</small>
-            <a href={previewGallery.videoUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-              Buka di YouTube <ExternalLink size={12} />
+            <a href={previewGallery.videoUrl} target="_blank" rel="noreferrer">
+              <Play size={13} fill="currentColor" /> Tonton di YouTube <ExternalLink size={12} />
             </a>
           </div>
         )}
         {previewSource && <div className="detail-wide"><small>Sumber</small><a href={previewSource.sourceUrl} target="_blank" rel="noreferrer">{previewSource.sourceTitle}</a></div>}
         {previewAttachment && <div className="detail-wide preview-attachment"><small>Lampiran</small><a href={`${previewAttachment.attachmentUrl}?download=1`}><Paperclip />{previewAttachment.attachmentName} <Download /></a></div>}
         <div className="detail-wide"><small>Deskripsi</small><RichTextContent content={preview.data.data.summary} /></div><div><small>Dibuat</small><span>{formatDate(preview.data.data.createdAt)}</span></div><div><small>Diperbarui</small><span>{formatDate(preview.data.data.updatedAt)}</span></div>
+        <div className="detail-wide modal-actions" style={{ marginTop: "12px" }}>
+          <button type="button" onClick={() => setPreviewId(undefined)}>Tutup</button>
+          {canEdit && (
+            <button
+              type="button"
+              className="admin-primary"
+              onClick={() => {
+                const itemToEdit = preview.data?.data;
+                setPreviewId(undefined);
+                if (itemToEdit) openEdit(itemToEdit);
+              }}
+            >
+              <Pencil size={13} /> Edit Data Ini
+            </button>
+          )}
+        </div>
       </div>}</section></div>}
       {deleteCandidate && <div className="admin-modal-backdrop"><section className="admin-modal confirm-modal"><span><AlertTriangle /></span><h2>Hapus konten?</h2><p>“{deleteCandidate.title}” akan dihapus permanen dan tidak dapat dipulihkan.</p><div className="modal-actions"><button type="button" onClick={() => setDeleteCandidate(null)}>Batal</button><button className="danger-button" type="button" onClick={remove} disabled={deleteContent.isPending}>{deleteContent.isPending ? "Menghapus…" : "Hapus Permanen"}</button></div></section></div>}
       {toast && <div className="admin-toast"><Check /><span>{toast}</span></div>}

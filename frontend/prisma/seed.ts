@@ -16,6 +16,9 @@ type SeedItem = {
   imageUrl?: string;
   imageAlt?: string;
   imageCredit?: string;
+  mediaType?: "PHOTO" | "VIDEO";
+  videoUrl?: string;
+  youtubeId?: string;
   viewCount?: number;
 };
 
@@ -386,14 +389,16 @@ const items: SeedItem[] = [
     sourceUrl: index === 8 ? "https://sultra.antaranews.com/berita/297817/porprov-sultra-konsel-juara-cabang-taekwondo" : index === 10 ? "https://sultrakini.com/pemda-konsel-apresiasi-atlet-kempo-raih-medali-di-popda-ii-sultra/" : index === 2 ? "https://sultrack.com/2025/10/26/tim-sepak-bola-konsel-jawara-dalam-ajang-popda-se-sultra/" : index === 3 ? "https://bikasmedia.com/afk-konsel-sukses-gelar-seleksi-futsal-menuju-porprov-2026-ameeraa-fc-keluar-sebagai-juara/" : index === 7 ? "https://sman1konaweselatan.sch.id/read/136/sman-1-konawe-selatan-raih-juara-1-umum-o2sn-tingkat-kabupaten-tahun-2026" : KONI_SOURCE,
     summary: `<p>${description}</p><p>Informasi seleksi, jadwal latihan, dan kegiatan cabang disampaikan melalui pengurus cabang olahraga dan sekretariat KONI Konawe Selatan.</p>`,
   })),
-  ...[
-    ["musda-koni-konsel-2026", "Musyawarah Daerah KONI Konawe Selatan 2026", "Organisasi", "Dokumentasi Musda KONI Konawe Selatan di Wonua Monapa, Ranomeeto, yang menetapkan ketua periode 2026–2031.", "https://www.oyisultra.com/2026/06/20/wakil-bupati-wahyu-imran-resmi-pimpin-koni-konawe-selatan/", "2026-06-20"],
-    ["seleksi-futsal-porprov-2026", "Turnamen dan Seleksi Futsal Porprov 2026", "Seleksi Atlet", "Momen pertandingan, penyerahan penghargaan, dan pemantauan pemain pada seleksi futsal Konawe Selatan.", "https://bikasmedia.com/afk-konsel-sukses-gelar-seleksi-futsal-menuju-porprov-2026-ameeraa-fc-keluar-sebagai-juara/", "2026-06-14"],
-    ["o2sn-konawe-selatan-2026", "O2SN Kabupaten Konawe Selatan 2026", "Olahraga Pelajar", "Rekam prestasi atlet pelajar pada cabang pencak silat, bulu tangkis, renang, panjat tebing, dan atletik.", "https://sman1konaweselatan.sch.id/read/136/sman-1-konawe-selatan-raih-juara-1-umum-o2sn-tingkat-kabupaten-tahun-2026", "2026-06-16"],
-    ["sepak-bola-popda-sultra-2025", "Final Sepak Bola Popda Sulawesi Tenggara 2025", "Kejuaraan", "Dokumentasi perjuangan tim pelajar Konawe Selatan hingga meraih medali emas melalui final yang ditentukan lewat adu penalti.", "https://sultrack.com/2025/10/26/tim-sepak-bola-konsel-jawara-dalam-ajang-popda-se-sultra/", "2025-10-26"],
-    ["kontingen-porprov-xiv-sultra", "Perjalanan Kontingen pada Porprov XIV Sultra", "Porprov", "Arsip capaian kontingen Konawe Selatan yang mengumpulkan 159 medali dan menempati peringkat keempat Porprov XIV Sultra.", "https://sultra.antaranews.com/berita/435383/kendari-juara-umum-porprov-xiv-sultra-2022", "2022-12-04"],
-    ["taekwondo-porprov-xiii-sultra", "Taekwondo Konawe Selatan di Porprov XIII Sultra", "Prestasi", "Dokumentasi tim taekwondo Konawe Selatan setelah meraih empat emas, satu perak, tiga perunggu, dan gelar juara umum cabang.", "https://sultra.antaranews.com/berita/297817/porprov-sultra-konsel-juara-cabang-taekwondo", "2018-12-13"],
-  ].map(([slug, title, category, description, sourceUrl, date]): SeedItem => ({
+  ...(
+    [
+      ["musda-koni-konsel-2026", "Musyawarah Daerah KONI Konawe Selatan 2026", "Organisasi", "Dokumentasi Musda KONI Konawe Selatan di Wonua Monapa, Ranomeeto, yang menetapkan ketua periode 2026–2031.", "https://www.oyisultra.com/2026/06/20/wakil-bupati-wahyu-imran-resmi-pimpin-koni-konawe-selatan/", "2026-06-20", "/assets/news/musda-koni-2026.jpg", "PHOTO", undefined, undefined],
+      ["seleksi-futsal-porprov-2026", "Turnamen dan Seleksi Futsal Porprov 2026", "Seleksi Atlet", "Momen pertandingan, penyerahan penghargaan, dan pemantauan pemain pada seleksi futsal Konawe Selatan.", "https://bikasmedia.com/afk-konsel-sukses-gelar-seleksi-futsal-menuju-porprov-2026-ameeraa-fc-keluar-sebagai-juara/", "2026-06-14", "/assets/news/seleksi-futsal-2026.jpg", "PHOTO", undefined, undefined],
+      ["o2sn-konawe-selatan-2026", "O2SN Kabupaten Konawe Selatan 2026", "Olahraga Pelajar", "Rekam prestasi atlet pelajar pada cabang pencak silat, bulu tangkis, renang, panjat tebing, dan atletik.", "https://sman1konaweselatan.sch.id/read/136/sman-1-konawe-selatan-raih-juara-1-umum-o2sn-tingkat-kabupaten-tahun-2026", "2026-06-16", "/assets/news/o2sn-konsel-2026.jpg", "PHOTO", undefined, undefined],
+      ["sepak-bola-popda-sultra-2025", "Final Sepak Bola Popda Sulawesi Tenggara 2025", "Kejuaraan", "Dokumentasi perjuangan tim pelajar Konawe Selatan hingga meraih medali emas melalui final yang ditentukan lewat adu penalti.", "https://sultrack.com/2025/10/26/tim-sepak-bola-konsel-jawara-dalam-ajang-popda-se-sultra/", "2025-10-26", "/assets/news/sepakbola-popda-2025.jpg", "PHOTO", undefined, undefined],
+      ["kontingen-porprov-xiv-sultra", "Perjalanan Kontingen pada Porprov XIV Sultra", "Porprov", "Arsip capaian kontingen Konawe Selatan yang mengumpulkan 159 medali dan menempati peringkat keempat Porprov XIV Sultra.", "https://sultra.antaranews.com/berita/435383/kendari-juara-umum-porprov-xiv-sultra-2022", "2022-12-04", "/assets/news/porprov-2022.jpg", "VIDEO", "https://www.youtube.com/watch?v=kY67Z3vBhhM", "kY67Z3vBhhM"],
+      ["taekwondo-porprov-xiii-sultra", "Taekwondo Konawe Selatan di Porprov XIII Sultra", "Prestasi", "Dokumentasi tim taekwondo Konawe Selatan setelah meraih empat emas, satu perak, tiga perunggu, dan gelar juara umum cabang.", "https://sultra.antaranews.com/berita/297817/porprov-sultra-konsel-juara-cabang-taekwondo", "2018-12-13", "/assets/news/taekwondo-2018.jpg", "PHOTO", undefined, undefined],
+    ] as [string, string, string, string, string, string, string, "PHOTO" | "VIDEO", string?, string?][]
+  ).map(([slug, title, category, description, sourceUrl, date, imageUrl, mediaType, videoUrl, youtubeId]): SeedItem => ({
     kind: ContentKind.GALLERY,
     slug,
     title,
@@ -402,6 +407,11 @@ const items: SeedItem[] = [
     publishedAt: `${date}T08:00:00+08:00`,
     sourceTitle: `Referensi dokumentasi — ${title}`,
     sourceUrl,
+    imageUrl,
+    imageAlt: title,
+    mediaType: mediaType || "PHOTO",
+    videoUrl,
+    youtubeId,
     summary: `<p>${description}</p>`,
   })),
   ...[
@@ -451,7 +461,7 @@ async function main() {
   await prisma.contentItem.deleteMany({ where: { OR: obsoleteSeedItems.map(([kind, slug]) => ({ kind, slug })) } });
 
   for (const item of items) {
-    const { sourceTitle, sourceUrl, imageUrl, imageAlt, imageCredit, viewCount = 0, publishedAt, ...content } = item;
+    const { sourceTitle, sourceUrl, imageUrl, imageAlt, imageCredit, mediaType, videoUrl, youtubeId, viewCount = 0, publishedAt, ...content } = item;
     const data = {
       ...content,
       publishedAt: new Date(publishedAt),
@@ -459,6 +469,9 @@ async function main() {
         sourceTitle,
         sourceUrl,
         ...(imageUrl ? { imageUrl, ...(imageAlt ? { imageAlt } : {}), ...(imageCredit ? { imageCredit } : {}) } : {}),
+        ...(mediaType ? { mediaType } : {}),
+        ...(videoUrl ? { videoUrl } : {}),
+        ...(youtubeId ? { youtubeId } : {}),
       },
     };
     await prisma.contentItem.upsert({

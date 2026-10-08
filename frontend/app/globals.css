@@ -239,3 +239,9 @@ footer h3 { margin:7px 0 14px; font-size:13px; }.footer-nav { display:flex; flex
 
 @media(max-width:640px){.gallery-modal-dialog{max-height:95vh;border-radius:16px}.gallery-modal-content{padding:16px 18px 20px}.gallery-modal-title{font-size:16px}.gallery-modal-yt-btn{margin-left:0;width:100%;justify-content:center}.gallery-photo-preview{max-height:50vh}}
 
+.admin-preview-empty-media { padding:24px; border-radius:12px; background:#f8fafc; border:1.5px dashed #cbd5e1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:10px; color:#64748b; }
+.admin-preview-empty-media svg { color:#94a3b8; }
+.admin-preview-empty-media strong { color:#1e293b; font-size:13px; }
+.admin-preview-empty-media p { margin:0; font-size:11px; color:#64748b; max-width:380px; }
+
+
