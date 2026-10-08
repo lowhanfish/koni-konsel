@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowRight, Bike, Building2, Camera, Dumbbell, FileText, Goal, Images, MessageCircle,
+  ArrowRight, Bike, Camera, Dumbbell, FileText, Goal, Images, MessageCircle,
   Mail, MapPin, Medal, Menu, Newspaper, Phone, Play, Search,
   ShieldCheck, Target, Trophy, Users, Video, Volleyball, Waves, X, Zap,
 } from "lucide-react";
@@ -147,7 +147,23 @@ export default function Home() {
             <p>KONI Kabupaten Konawe Selatan adalah wadah pembinaan, pengembangan, dan koordinasi olahraga prestasi di daerah dengan semangat kebersamaan, profesionalisme, dan integritas untuk mewujudkan atlet-atlet berprestasi yang mengharumkan nama Konawe Selatan.</p>
             <Link className="button" href="/profil">Selengkapnya <ArrowRight size={17} /></Link>
           </div>
-          <div className="office-card"><div className="office-building"><Building2 size={62} /><div><Image src="/assets/logo-koni.png" alt="" width={55} height={55} /><strong>KONI</strong><span>KABUPATEN KONAWE SELATAN</span></div></div></div>
+          <div className="office-card">
+            <Image
+              src="/assets/gedung-koni.jpg"
+              alt="Gedung Sekretariat KONI Kabupaten Konawe Selatan"
+              width={1024}
+              height={575}
+              className="office-photo"
+              priority
+            />
+            <div className="office-badge">
+              <Image src="/assets/logo-koni.png" alt="Logo KONI" width={38} height={38} />
+              <div>
+                <strong>SEKRETARIAT KONI</strong>
+                <span>KABUPATEN KONAWE SELATAN</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="container value-grid">
           {[[Zap, "Pembinaan Atlet", "Mencetak atlet unggul dan berkarakter sejak dini."], [Medal, "Pengembangan Cabor", "Mendorong pertumbuhan seluruh cabang olahraga di Konawe Selatan."], [Trophy, "Prestasi Daerah", "Meraih prestasi di tingkat daerah, provinsi, nasional dan internasional."], [Users, "Olahraga untuk Semua", "Mewujudkan masyarakat sehat, bugar dan berdaya saing."]].map(([Icon, title, text], index) => { const ValueIcon = Icon as typeof Zap; return <article className="value-card" key={String(title)}><ValueIcon className={index % 2 ? "gold" : "red"} size={45} /><h3>{String(title)}</h3><p>{String(text)}</p></article>; })}
