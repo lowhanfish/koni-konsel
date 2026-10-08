@@ -1,0 +1,10 @@
+services:
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: koni_web
+    restart: always
+    env_file:
+      - ./frontend/.env
+    network_mode: "host"
