@@ -12,6 +12,7 @@ import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 import { usePublicContent } from "@/hooks/use-public-content";
 import { getContentImage } from "@/lib/content";
 import { excerptFromRichText } from "@/lib/rich-text";
+import { navItems } from "./components/site-chrome";
 
 const quickLinks = [
   { icon: Users, title: "Profil KONI", text: "Sejarah, visi, misi dan struktur organisasi", href: "/profil" },
@@ -99,7 +100,7 @@ export default function Home() {
         <div className="container header-inner">
           <Brand />
           <nav className={menuOpen ? "nav-links open" : "nav-links"} aria-label="Navigasi utama">
-            {[["Beranda","/"],["Profil","/profil"],["Program","/program"],["Cabang Olahraga","/cabang-olahraga"],["Berita","/berita"],["Galeri","/galeri"],["Prestasi","/prestasi"],["Kontak","/kontak"]].map(([item,href]) => (
+            {navItems.map(([item, href]) => (
               <Link className={href === "/" ? "active" : ""} key={item} href={href} onClick={() => setMenuOpen(false)}>{item}</Link>
             ))}
           </nav>
@@ -207,7 +208,7 @@ export default function Home() {
       <footer id="kontak">
         <div className="container footer-grid">
           <div className="footer-brand"><Brand /><p>{settings.description}</p><div className="socials">{hasSocialLinks ? socialLinks.map(([url, Icon, label]) => url && <a key={label} href={url} target="_blank" rel="noreferrer" aria-label={`${label} resmi KONI Konawe Selatan`}><Icon /></a>) : <><a href={`mailto:${settings.email}`} aria-label="Kirim email ke KONI Konawe Selatan"><Mail /></a><a href={`tel:${settings.phone.replace(/[^\d+]/g, "")}`} aria-label="Telepon KONI Konawe Selatan"><Phone /></a></>}</div></div>
-          <div><h3>Quick Menu</h3><nav className="footer-nav">{[["Beranda","/"],["Profil","/profil"],["Program","/program"],["Cabang Olahraga","/cabang-olahraga"],["Berita","/berita"],["Galeri","/galeri"],["Prestasi","/prestasi"],["Kontak","/kontak"]].map(([item,href]) => <Link key={item} href={href}>{item}</Link>)}</nav></div>
+          <div><h3>Quick Menu</h3><nav className="footer-nav">{navItems.map(([item, href]) => <Link key={item} href={href}>{item}</Link>)}</nav></div>
           <div><h3>Kontak Kami</h3><ul className="contact-list"><li><MapPin />{settings.address}</li><li><Mail />{settings.email}</li><li><Phone />{settings.phone}</li></ul></div>
           <div><h3>Lokasi</h3><div className="map-card"><MapPin fill="currentColor" /><div><strong>KONI</strong><span>Konawe Selatan</span></div></div><a className="footer-map-link" href={`https://maps.google.com/?q=${encodeURIComponent(settings.address)}`} target="_blank" rel="noreferrer">Lihat di Google Maps <ArrowRight size={15} /></a></div>
         </div>

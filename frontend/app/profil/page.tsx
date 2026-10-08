@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Award, Eye, Flag, HeartHandshake, ShieldCheck, Target, Users } from "lucide-react";
 import { PageHero, SiteShell } from "../components/site-chrome";
+
+export const metadata: Metadata = {
+  title: "Profil",
+  description:
+    "Mengenal lebih dekat Komite Olahraga Nasional Indonesia (KONI) Kabupaten Konawe Selatan, visi, misi, dan struktur organisasi pembinaan olahraga.",
+  openGraph: {
+    title: "Profil | KONI Kabupaten Konawe Selatan",
+    description:
+      "Mengenal lebih dekat Komite Olahraga Nasional Indonesia (KONI) Kabupaten Konawe Selatan, visi, misi, dan struktur organisasi pembinaan olahraga.",
+    url: "/profil",
+    images: [{ url: "/assets/logo-koni.png" }],
+  },
+};
 
 export default function ProfilPage() {
   return <SiteShell><PageHero eyebrow="MENGENAL ORGANISASI" title="Profil" accent="KONI" description="Komite Olahraga Nasional Indonesia Kabupaten Konawe Selatan hadir untuk menyatukan langkah, membina potensi, dan mengantarkan atlet daerah menuju prestasi tertinggi." />
