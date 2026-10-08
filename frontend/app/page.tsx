@@ -10,7 +10,7 @@ import {
 import { useState } from "react";
 import { fallbackSettings, useSettings } from "@/hooks/use-settings";
 import { usePublicContent } from "@/hooks/use-public-content";
-import { getContentImage } from "@/lib/content";
+import { getContentImage, getGalleryMedia } from "@/lib/content";
 import { excerptFromRichText } from "@/lib/rich-text";
 import { navItems } from "./components/site-chrome";
 
@@ -214,7 +214,35 @@ export default function Home() {
 
       <section className="section gallery-section" id="galeri"><div className="container">
         <div className="gallery-head"><SectionTitle>GALERI KEGIATAN</SectionTitle><div className="filter-list">{galleryFilterOptions.map((filter) => <button key={filter} className={galleryFilter === filter ? "active" : ""} onClick={() => setGalleryFilter(filter)}>{filter}</button>)}</div></div>
-        <div className="gallery-grid">{galleryItems.filter((item) => galleryFilter === "Semua" || item.category === galleryFilter).map((item, index) => <div className={`gallery-item item-${index}`} key={item.id} title={item.title}><div className="sports-image" style={{ backgroundPosition: `${8 + index * 9}% center` }} />{index === 0 && <span className="gallery-badge"><Play size={15} fill="currentColor" /> Pilihan</span>}</div>)}<Link className="gallery-more" href="/galeri"><Images size={32} /><span>Lihat<br />Lebih Banyak</span><ArrowRight size={20} /></Link></div>
+        <div className="gallery-grid">
+          {galleryItems.filter((item) => galleryFilter === "Semua" || item.category === galleryFilter).map((item, index) => {
+            const media = getGalleryMedia(item.metadata);
+            const coverUrl = media?.imageUrl;
+            const isVideo = media?.mediaType === "VIDEO";
+            return (
+              <Link
+                className={`gallery-item item-${index}`}
+                key={item.id}
+                href="/galeri"
+                title={item.title}
+              >
+                <div
+                  className="sports-image"
+                  style={
+                    coverUrl
+                      ? { backgroundImage: `url("${coverUrl}")`, backgroundSize: "cover", backgroundPosition: "center" }
+                      : { backgroundPosition: `${8 + index * 9}% center` }
+                  }
+                />
+                <span className="gallery-badge">
+                  {isVideo ? <Play size={13} fill="currentColor" /> : <Camera size={13} />}
+                  {isVideo ? "Video" : item.category || "Dokumentasi"}
+                </span>
+              </Link>
+            );
+          })}
+          <Link className="gallery-more" href="/galeri"><Images size={32} /><span>Lihat<br />Lebih Banyak</span><ArrowRight size={20} /></Link>
+        </div>
       </div></section>
 
       <section className="join-section"><div className="container join-inner"><div><h2>BERSAMA MEMAJUKAN<br />OLAHRAGA KONAWE SELATAN</h2><p>Mari bersinergi untuk mencetak lebih banyak atlet berprestasi dan mewujudkan Konawe Selatan yang sehat, maju, dan membanggakan.</p></div><Link className="button button-gold" href="/kontak">Bergabung Bersama Kami <ArrowRight size={17} /></Link></div></section>

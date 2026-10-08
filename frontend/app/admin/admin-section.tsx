@@ -3,16 +3,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowLeft, CalendarDays, Check, CircleHelp, Download,
-  AlertTriangle, Bell, Dumbbell, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
-  Newspaper, Paperclip, Pencil, Plus, Search, Settings, Trash2, Trophy, Upload, Users, X,
+  ArrowLeft, CalendarDays, Camera, Check, CircleHelp, Download,
+  AlertTriangle, Bell, Dumbbell, ExternalLink, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
+  Newspaper, Paperclip, Pencil, Play, Plus, Search, Settings, Trash2, Trophy, Upload, Users, Video, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { deleteMedia, uploadMedia, useContentItem, useContentList, useCreateContent, useDeleteContent, useUpdateContent } from "@/hooks/use-content";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useMessagesList } from "@/hooks/use-messages";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { contentStatuses, getContentAttachment, getContentImage, getContentSource, sectionKindMap, statusLabels, type ContentItem, type ContentStatus } from "@/lib/content";
+import {
+  contentStatuses,
+  extractYouTubeId,
+  getGalleryMedia,
+  getContentAttachment,
+  getContentImage,
+  getContentSource,
+  sectionKindMap,
+  statusLabels,
+  type ContentItem,
+  type ContentStatus,
+} from "@/lib/content";
 import { contentFormSchema } from "@/lib/validation/content";
 import { useAdminContentStore } from "@/stores/admin-content-store";
 import { LogoutButton } from "./logout-button";
@@ -57,6 +68,8 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<ContentItem | null>(null);
+  const [galleryMediaType, setGalleryMediaType] = useState<"PHOTO" | "VIDEO">("PHOTO");
+  const [videoUrlInput, setVideoUrlInput] = useState("");
   const [previewId, setPreviewId] = useState<string>();
   const [deleteCandidate, setDeleteCandidate] = useState<ContentItem | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -99,9 +112,11 @@ export function AdminSection({ section }: { section: SectionKey }) {
   const editingSource = getContentSource(editing?.metadata);
   const editingImage = getContentImage(editing?.metadata);
   const editingAttachment = getContentAttachment(editing?.metadata);
+  const editingGallery = getGalleryMedia(editing?.metadata);
   const previewSource = getContentSource(preview.data?.data.metadata);
   const previewImage = getContentImage(preview.data?.data.metadata);
   const previewAttachment = getContentAttachment(preview.data?.data.metadata);
+  const previewGallery = getGalleryMedia(preview.data?.data.metadata);
 
   function showToast(message: string) {
     setToast(message);
@@ -118,6 +133,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
     const form = new FormData(event.currentTarget);
     const isNews = section === "berita";
     const isAnnouncement = section === "pengumuman";
+    const isGallery = section === "galeri";
     const hasPublishDate = isNews || section === "pengumuman";
     const publishedDate = String(form.get("publishedAt") || "");
     const imageFile = form.get("imageFile");
@@ -125,10 +141,26 @@ export function AdminSection({ section }: { section: SectionKey }) {
     const selectedImage = imageFile instanceof File && imageFile.size > 0 ? imageFile : null;
     const selectedAttachment = attachmentFile instanceof File && attachmentFile.size > 0 ? attachmentFile : null;
     const removeAttachment = form.get("removeAttachment") === "on";
+
     if (isNews && !selectedImage && !editingImage) {
       setFormErrors({ imageFile: "Gambar berita wajib diunggah" });
       return;
     }
+
+    const mediaType = isGallery ? (galleryMediaType === "VIDEO" ? "VIDEO" : "PHOTO") : undefined;
+    const videoUrl = isGallery && mediaType === "VIDEO" ? String(form.get("videoUrl") || "").trim() : "";
+    const youtubeId = isGallery && mediaType === "VIDEO" ? extractYouTubeId(videoUrl) : null;
+
+    if (isGallery && mediaType === "VIDEO" && !youtubeId) {
+      setFormErrors({ videoUrl: "Tautan YouTube tidak valid. Gunakan format seperti https://www.youtube.com/watch?v=... atau https://youtu.be/..." });
+      return;
+    }
+
+    if (isGallery && mediaType === "PHOTO" && !selectedImage && !editingImage?.imageUrl) {
+      setFormErrors({ imageFile: "Foto dokumentasi wajib diunggah" });
+      return;
+    }
+
     const newsMetadata = isNews ? {
       sourceTitle: String(form.get("sourceTitle") || ""),
       sourceUrl: String(form.get("sourceUrl") || ""),
@@ -137,6 +169,7 @@ export function AdminSection({ section }: { section: SectionKey }) {
       imageCredit: String(form.get("imageCredit") || "") || undefined,
       ...(editingImage?.imageFileId ? { imageFileId: editingImage.imageFileId } : {}),
     } : undefined;
+
     const announcementMetadata = isAnnouncement && editingAttachment && !removeAttachment ? {
       attachmentUrl: editingAttachment.attachmentUrl,
       ...(editingAttachment.attachmentFileId ? { attachmentFileId: editingAttachment.attachmentFileId } : {}),
@@ -144,13 +177,28 @@ export function AdminSection({ section }: { section: SectionKey }) {
       attachmentMimeType: editingAttachment.attachmentMimeType,
       ...(editingAttachment.attachmentSize ? { attachmentSize: editingAttachment.attachmentSize } : {}),
     } : isAnnouncement && removeAttachment ? {} : undefined;
+
+    let finalGalleryImageUrl = editingImage?.imageUrl ?? editingGallery?.imageUrl;
+    if (isGallery && mediaType === "VIDEO" && !finalGalleryImageUrl && youtubeId) {
+      finalGalleryImageUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+    }
+
+    const galleryMetadata = isGallery ? {
+      mediaType,
+      videoUrl: mediaType === "VIDEO" ? videoUrl : undefined,
+      youtubeId: mediaType === "VIDEO" ? youtubeId ?? undefined : undefined,
+      imageUrl: finalGalleryImageUrl ?? (mediaType === "PHOTO" ? "/api/media/pending" : undefined),
+      imageAlt: String(form.get("imageAlt") || form.get("title") || ""),
+      ...(editingImage?.imageFileId ? { imageFileId: editingImage.imageFileId } : {}),
+    } : undefined;
+
     const input = {
       title: String(form.get("title") || ""),
       category: String(form.get("category") || "") || null,
       status: String(form.get("status") || "DRAFT") as ContentStatus,
       summary: String(form.get("summary") || "") || null,
       ...(hasPublishDate ? { publishedAt: publishedDate ? new Date(`${publishedDate}T00:00:00+08:00`) : undefined } : {}),
-      ...(newsMetadata ? { metadata: newsMetadata } : announcementMetadata ? { metadata: announcementMetadata } : {}),
+      ...(newsMetadata ? { metadata: newsMetadata } : announcementMetadata ? { metadata: announcementMetadata } : galleryMetadata ? { metadata: galleryMetadata } : {}),
     };
     const initialParsed = contentFormSchema.safeParse(input);
     if (!initialParsed.success) {
@@ -162,10 +210,21 @@ export function AdminSection({ section }: { section: SectionKey }) {
     let uploadedFileId: string | undefined;
     try {
       let finalInput = initialParsed.data;
-      if (selectedImage && newsMetadata) {
+      if (selectedImage && (newsMetadata || isGallery)) {
         const uploaded = await uploadMedia(selectedImage, "image");
         uploadedFileId = uploaded.id;
-        finalInput = contentFormSchema.parse({ ...input, metadata: { ...newsMetadata, imageUrl: uploaded.url, imageFileId: uploaded.id } });
+        if (isGallery && galleryMetadata) {
+          finalInput = contentFormSchema.parse({
+            ...input,
+            metadata: {
+              ...galleryMetadata,
+              imageUrl: uploaded.url,
+              imageFileId: uploaded.id,
+            },
+          });
+        } else if (newsMetadata) {
+          finalInput = contentFormSchema.parse({ ...input, metadata: { ...newsMetadata, imageUrl: uploaded.url, imageFileId: uploaded.id } });
+        }
       } else if (selectedAttachment) {
         const uploaded = await uploadMedia(selectedAttachment, "attachment");
         uploadedFileId = uploaded.id;
@@ -203,6 +262,8 @@ export function AdminSection({ section }: { section: SectionKey }) {
 
   function openCreate() {
     setEditing(null);
+    setGalleryMediaType("PHOTO");
+    setVideoUrlInput("");
     setFormErrors({});
     setSaving(false);
     setSelectedImageName("");
@@ -212,6 +273,9 @@ export function AdminSection({ section }: { section: SectionKey }) {
 
   function openEdit(item: ContentItem) {
     setEditing(item);
+    const gMedia = getGalleryMedia(item.metadata);
+    setGalleryMediaType(gMedia?.mediaType ?? "PHOTO");
+    setVideoUrlInput(gMedia?.videoUrl ?? "");
     setFormErrors({});
     setSaving(false);
     setSelectedImageName("");
@@ -277,7 +341,10 @@ export function AdminSection({ section }: { section: SectionKey }) {
                 {kind && !content.isPending && rows.length === 0 && <tr><td colSpan={6}>Belum ada data yang cocok.</td></tr>}
                 {kind ? contentRows.map((item, index) => {
                   const itemImage = getContentImage(item.metadata);
-                  return <tr key={item.id}><td><div className="section-primary-cell">{itemImage ? <span className="row-avatar news-row-image" style={{ backgroundImage: `url("${itemImage.imageUrl}")` }} role="img" aria-label={itemImage.imageAlt}/> : <span className={`row-avatar avatar-${index % 5}`}><Icon /></span>}<strong>{item.title}</strong></div></td><td>{item.category || "—"}</td><td>{formatDate(section === "berita" || section === "pengumuman" ? item.publishedAt ?? item.updatedAt : item.updatedAt)}</td><td><span className={item.status === "DRAFT" || item.status === "SCHEDULED" ? "status-draft" : "status-live"}><i />{statusLabels[item.status]}</span></td><td>{item.viewCount.toLocaleString("id-ID")}</td><td><div className="row-actions"><button aria-label={`Lihat ${item.title}`} onClick={() => setPreviewId(item.id)}><Eye /></button>{canEdit && <button aria-label={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil /></button>}{canDelete && <button aria-label={`Hapus ${item.title}`} onClick={() => setDeleteCandidate(item)}><Trash2 /></button>}</div></td></tr>;
+                  const itemGallery = getGalleryMedia(item.metadata);
+                  const displayThumb = itemGallery?.imageUrl || itemImage?.imageUrl;
+                  const isVideo = itemGallery?.mediaType === "VIDEO";
+                  return <tr key={item.id}><td><div className="section-primary-cell">{displayThumb ? <span className="row-avatar news-row-image" style={{ backgroundImage: `url("${displayThumb}")`, position: "relative" }} role="img" aria-label={itemGallery?.imageAlt || itemImage?.imageAlt}>{isVideo && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,.4)", color: "#fff", borderRadius: "inherit" }}><Play size={12} fill="currentColor" /></span>}</span> : <span className={`row-avatar avatar-${index % 5}`}><Icon /></span>}<strong>{item.title}</strong></div></td><td>{item.category || "—"}</td><td>{formatDate(section === "berita" || section === "pengumuman" ? item.publishedAt ?? item.updatedAt : item.updatedAt)}</td><td><span className={item.status === "DRAFT" || item.status === "SCHEDULED" ? "status-draft" : "status-live"}><i />{statusLabels[item.status]}</span></td><td>{item.viewCount.toLocaleString("id-ID")}</td><td><div className="row-actions"><button aria-label={`Lihat ${item.title}`} onClick={() => setPreviewId(item.id)}><Eye /></button>{canEdit && <button aria-label={`Edit ${item.title}`} onClick={() => openEdit(item)}><Pencil /></button>}{canDelete && <button aria-label={`Hapus ${item.title}`} onClick={() => setDeleteCandidate(item)}><Trash2 /></button>}</div></td></tr>;
                 }) : localRows.map((row, index) => <tr key={row[0]}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cellIndex === 0 ? <div className="section-primary-cell"><span className={`row-avatar avatar-${index}`}><Icon /></span><strong>{cell}</strong></div> : cell}</td>)}<td>—</td></tr>)}
               </tbody></table></div>
               <div className="table-footer"><span>Menampilkan {rows.length} dari {total} data</span>{kind && <div><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1}>‹</button><button className="active" aria-current="page" disabled>{page}</button><button onClick={() => setPage(page + 1)} disabled={page >= (content.data?.meta.pageCount ?? 1)}>›</button></div>}</div>
@@ -305,13 +372,135 @@ export function AdminSection({ section }: { section: SectionKey }) {
           <label>Nama sumber<input name="sourceTitle" defaultValue={editingSource?.sourceTitle ?? ""} aria-invalid={Boolean(formErrors.sourceTitle)} placeholder="Nama media — Judul artikel" />{formErrors.sourceTitle && <small className="field-error">{formErrors.sourceTitle}</small>}</label>
           <label>URL sumber<input name="sourceUrl" type="url" defaultValue={editingSource?.sourceUrl ?? ""} aria-invalid={Boolean(formErrors.sourceUrl)} placeholder="https://…" />{formErrors.sourceUrl && <small className="field-error">{formErrors.sourceUrl}</small>}</label>
         </div>}
+        {section === "galeri" && <div className="gallery-admin-fields">
+          <div className="gallery-type-toggle">
+            <button
+              type="button"
+              className={`gallery-type-btn ${galleryMediaType === "PHOTO" ? "active" : ""}`}
+              onClick={() => setGalleryMediaType("PHOTO")}
+            >
+              <Camera size={15} /> Foto Dokumentasi
+            </button>
+            <button
+              type="button"
+              className={`gallery-type-btn ${galleryMediaType === "VIDEO" ? "active" : ""}`}
+              onClick={() => setGalleryMediaType("VIDEO")}
+            >
+              <Play size={14} fill="currentColor" /> Video (YouTube)
+            </button>
+          </div>
+          <input type="hidden" name="galleryMediaType" value={galleryMediaType} />
+
+          {galleryMediaType === "VIDEO" ? (
+            <div>
+              <div className="gallery-admin-hint">
+                <strong>Hemat Bandwidth & Cepat:</strong> Masukkan URL video YouTube (misal: https://www.youtube.com/watch?v=... atau https://youtu.be/...). Video diputar lewat pemutar resmi YouTube tanpa membebani penyimpanan server. Thumbnail otomatis diambil dari YouTube.
+              </div>
+              <label>
+                URL / Tautan Video YouTube
+                <input
+                  name="videoUrl"
+                  type="url"
+                  value={videoUrlInput}
+                  onChange={(e) => setVideoUrlInput(e.target.value)}
+                  aria-invalid={Boolean(formErrors.videoUrl)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+                {formErrors.videoUrl && <small className="field-error">{formErrors.videoUrl}</small>}
+              </label>
+              {extractYouTubeId(videoUrlInput) && (
+                <div className="gallery-admin-video-preview">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${extractYouTubeId(videoUrlInput)}`}
+                    title="Pratinjau Video YouTube"
+                    allowFullScreen
+                  />
+                </div>
+              )}
+              <label className="upload-box" style={{ marginTop: "12px" }}>
+                <Upload />
+                <strong>{selectedImageName || (editingImage ? "Ganti cover khusus video (opsional)" : "Unggah cover khusus video (opsional)")}</strong>
+                <span>Kosongkan jika ingin memakai thumbnail bawaan YouTube</span>
+                <input
+                  name="imageFile"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(event) => setSelectedImageName(event.target.files?.[0]?.name ?? "")}
+                />
+              </label>
+              {editingImage && (
+                <div className="current-upload image-current">
+                  <span style={{ backgroundImage: `url("${editingImage.imageUrl}")` }} role="img" aria-label={editingImage.imageAlt} />
+                  <div>
+                    <small>Cover saat ini</small>
+                    <strong>{editingImage.imageAlt}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="upload-box">
+                <Upload />
+                <strong>{selectedImageName || (editingImage ? "Ganti foto dokumentasi" : "Unggah foto dokumentasi")}</strong>
+                <span>JPG, PNG, WebP, atau GIF · maksimal 5 MB</span>
+                <input
+                  name="imageFile"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  aria-invalid={Boolean(formErrors.imageFile)}
+                  onChange={(event) => setSelectedImageName(event.target.files?.[0]?.name ?? "")}
+                />
+              </label>
+              {editingImage && (
+                <div className="current-upload image-current">
+                  <span style={{ backgroundImage: `url("${editingImage.imageUrl}")` }} role="img" aria-label={editingImage.imageAlt} />
+                  <div>
+                    <small>Foto saat ini</small>
+                    <strong>{editingImage.imageAlt}</strong>
+                  </div>
+                </div>
+              )}
+              {formErrors.imageFile && <small className="field-error">{formErrors.imageFile}</small>}
+              <label>
+                Keterangan atau teks alternatif foto
+                <input
+                  name="imageAlt"
+                  defaultValue={editingImage?.imageAlt ?? ""}
+                  placeholder="Deskripsi singkat isi foto"
+                />
+              </label>
+            </div>
+          )}
+        </div>}
         <label>Deskripsi atau detail<RichTextEditor name="summary" defaultValue={editing?.summary} error={formErrors.summary} /></label>
         <div className="modal-actions"><button type="button" onClick={() => setModal(false)}>Batal</button><button className="admin-primary" type="submit" disabled={saving || createContent.isPending || updateContent.isPending}>{saving || createContent.isPending || updateContent.isPending ? "Mengunggah & menyimpan…" : editing ? "Simpan Perubahan" : "Simpan Data"}</button></div>
       </form></div>}
       {previewId && <div className="admin-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPreviewId(undefined)}><section className="admin-modal detail-modal"><div className="modal-head"><div><span><Eye /></span><div><h2>Detail {config.title}</h2><p>Pratinjau data tersimpan.</p></div></div><button type="button" onClick={() => setPreviewId(undefined)}><X /></button></div>{preview.isPending ? <p>Memuat detail…</p> : preview.isError ? <p>Detail gagal dimuat.</p> : preview.data && <div className="detail-grid">
-        {previewImage && <figure className="detail-wide admin-news-image"><div style={{ backgroundImage: `url("${previewImage.imageUrl}")` }} role="img" aria-label={previewImage.imageAlt}/>{previewImage.imageCredit && <figcaption>{previewImage.imageCredit}</figcaption>}</figure>}
+        {previewGallery?.mediaType === "VIDEO" && previewGallery.youtubeId ? (
+          <div className="detail-wide gallery-admin-video-preview">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${previewGallery.youtubeId}`}
+              title={preview.data.data.title}
+              allowFullScreen
+            />
+          </div>
+        ) : previewGallery?.imageUrl || previewImage ? (
+          <figure className="detail-wide admin-news-image">
+            <div style={{ backgroundImage: `url("${previewGallery?.imageUrl || previewImage?.imageUrl}")` }} role="img" aria-label={previewGallery?.imageAlt || previewImage?.imageAlt}/>
+            {previewImage?.imageCredit && <figcaption>{previewImage.imageCredit}</figcaption>}
+          </figure>
+        ) : null}
         <div><small>Judul</small><strong>{preview.data.data.title}</strong></div><div><small>Kategori</small><span>{preview.data.data.category || "—"}</span></div><div><small>Status</small><span>{statusLabels[preview.data.data.status]}</span></div><div><small>Slug</small><code>{preview.data.data.slug}</code></div>
         {preview.data.data.publishedAt && <div><small>Tanggal terbit</small><span>{formatDate(preview.data.data.publishedAt)}</span></div>}
+        {previewGallery?.videoUrl && (
+          <div className="detail-wide">
+            <small>Video YouTube</small>
+            <a href={previewGallery.videoUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              Buka di YouTube <ExternalLink size={12} />
+            </a>
+          </div>
+        )}
         {previewSource && <div className="detail-wide"><small>Sumber</small><a href={previewSource.sourceUrl} target="_blank" rel="noreferrer">{previewSource.sourceTitle}</a></div>}
         {previewAttachment && <div className="detail-wide preview-attachment"><small>Lampiran</small><a href={`${previewAttachment.attachmentUrl}?download=1`}><Paperclip />{previewAttachment.attachmentName} <Download /></a></div>}
         <div className="detail-wide"><small>Deskripsi</small><RichTextContent content={preview.data.data.summary} /></div><div><small>Dibuat</small><span>{formatDate(preview.data.data.createdAt)}</span></div><div><small>Diperbarui</small><span>{formatDate(preview.data.data.updatedAt)}</span></div>

@@ -70,6 +70,37 @@ export function getContentAttachment(metadata: unknown) {
   };
 }
 
+export function extractYouTubeId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+  return match ? match[1] : null;
+}
+
+export function getGalleryMedia(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const record = metadata as Record<string, unknown>;
+  const rawVideoUrl = typeof record.videoUrl === "string" ? record.videoUrl.trim() : null;
+  const youtubeId = rawVideoUrl ? extractYouTubeId(rawVideoUrl) : (typeof record.youtubeId === "string" ? record.youtubeId.trim() : null);
+  
+  let imageUrl = typeof record.imageUrl === "string" && record.imageUrl ? record.imageUrl.trim() : null;
+  if (!imageUrl && youtubeId) {
+    imageUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+  }
+  
+  const imageFileId = typeof record.imageFileId === "string" ? record.imageFileId : null;
+  const imageAlt = typeof record.imageAlt === "string" ? record.imageAlt : "Dokumentasi kegiatan";
+  const mediaType: "PHOTO" | "VIDEO" = rawVideoUrl || youtubeId || record.mediaType === "VIDEO" ? "VIDEO" : "PHOTO";
+  
+  return {
+    mediaType,
+    imageUrl,
+    imageFileId,
+    imageAlt,
+    videoUrl: rawVideoUrl,
+    youtubeId,
+  };
+}
+
 export const sectionKindMap: Record<string, ContentKind | undefined> = {
   berita: "NEWS",
   pengumuman: "ANNOUNCEMENT",

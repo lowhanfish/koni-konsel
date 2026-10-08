@@ -26,6 +26,9 @@ export const contentFormSchema = z.object({
     attachmentName: z.string().trim().min(1).max(250).optional(),
     attachmentMimeType: z.string().trim().min(1).max(100).optional(),
     attachmentSize: z.number().int().positive().max(10 * 1024 * 1024).optional(),
+    mediaType: z.enum(["PHOTO", "VIDEO"]).optional(),
+    videoUrl: z.string().trim().max(2_000).optional(),
+    youtubeId: z.string().trim().max(100).optional(),
   }).optional(),
   publishedAt: z.coerce.date().nullable().optional(),
 });
