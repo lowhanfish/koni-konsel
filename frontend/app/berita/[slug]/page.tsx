@@ -7,7 +7,7 @@ import { RichTextContent } from "../../components/rich-text-content";
 import { ContentSource } from "../../components/content-source";
 import { getContentImage } from "@/lib/content";
 import { excerptFromRichText } from "@/lib/rich-text";
-import { WhatsAppShare } from "../../components/whatsapp-share";
+import { SocialShare } from "../../components/social-share";
 
 export const dynamic = "force-dynamic";
 
@@ -66,5 +66,5 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   if (!post) notFound();
   await prisma.contentItem.update({ where: { id: post.id }, data: { viewCount: { increment: 1 } } });
   const image = getContentImage(post.metadata);
-  return <SiteShell><PageHero eyebrow={post.category || "BERITA KONI"} title="Berita" accent="KONI" description={post.title} /><article className="inner-section"><div className="container news-detail"><div className="detail-meta"><small><CalendarDays /> {new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(post.publishedAt ?? post.updatedAt)}</small><WhatsAppShare title={post.title} label="Bagikan via WhatsApp" /></div><h1>{post.title}</h1>{image && <figure className="news-detail-image"><div style={{ backgroundImage: `url("${image.imageUrl}")` }} role="img" aria-label={image.imageAlt}/>{image.imageCredit && <figcaption>{image.imageCredit}</figcaption>}</figure>}<RichTextContent content={post.summary}/><ContentSource metadata={post.metadata}/></div></article></SiteShell>;
+  return <SiteShell><PageHero eyebrow={post.category || "BERITA KONI"} title="Berita" accent="KONI" description={post.title} /><article className="inner-section"><div className="container news-detail"><div className="detail-meta"><small><CalendarDays /> {new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(post.publishedAt ?? post.updatedAt)}</small><SocialShare title={post.title} /></div><h1>{post.title}</h1>{image && <figure className="news-detail-image"><div style={{ backgroundImage: `url("${image.imageUrl}")` }} role="img" aria-label={image.imageAlt}/>{image.imageCredit && <figcaption>{image.imageCredit}</figcaption>}</figure>}<RichTextContent content={post.summary}/><ContentSource metadata={post.metadata}/></div></article></SiteShell>;
 }

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/server/prisma";
 import { PageHero, SiteShell } from "../../components/site-chrome";
 import { RichTextContent } from "../../components/rich-text-content";
-import { WhatsAppShare } from "../../components/whatsapp-share";
+import { SocialShare } from "../../components/social-share";
 import { getContentAttachment } from "@/lib/content";
 import { excerptFromRichText } from "@/lib/rich-text";
 
@@ -67,5 +67,5 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
   await prisma.contentItem.update({ where: { id: announcement.id }, data: { viewCount: { increment: 1 } } });
   const attachment = getContentAttachment(announcement.metadata);
 
-  return <SiteShell><PageHero eyebrow={announcement.category || "PENGUMUMAN RESMI"} title="Pengumuman" accent="KONI" description={announcement.title} /><article className="inner-section"><div className="container news-detail announcement-detail"><div className="detail-meta"><small><CalendarDays /> {new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(announcement.publishedAt ?? announcement.updatedAt)}</small><WhatsAppShare title={announcement.title} label="Bagikan via WhatsApp" /></div><h1>{announcement.title}</h1><RichTextContent content={announcement.summary} />{attachment && <aside className="announcement-attachment"><FileText aria-hidden="true" /><div><span><Paperclip aria-hidden="true" /> Lampiran pengumuman</span><strong>{attachment.attachmentName}</strong></div><a href={`${attachment.attachmentUrl}?download=1`}><Download aria-hidden="true" /> Unduh lampiran</a></aside>}</div></article></SiteShell>;
+  return <SiteShell><PageHero eyebrow={announcement.category || "PENGUMUMAN RESMI"} title="Pengumuman" accent="KONI" description={announcement.title} /><article className="inner-section"><div className="container news-detail announcement-detail"><div className="detail-meta"><small><CalendarDays /> {new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(announcement.publishedAt ?? announcement.updatedAt)}</small><SocialShare title={announcement.title} /></div><h1>{announcement.title}</h1><RichTextContent content={announcement.summary} />{attachment && <aside className="announcement-attachment"><FileText aria-hidden="true" /><div><span><Paperclip aria-hidden="true" /> Lampiran pengumuman</span><strong>{attachment.attachmentName}</strong></div><a href={`${attachment.attachmentUrl}?download=1`}><Download aria-hidden="true" /> Unduh lampiran</a></aside>}</div></article></SiteShell>;
 }

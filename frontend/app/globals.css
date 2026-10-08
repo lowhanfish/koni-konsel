@@ -244,4 +244,24 @@ footer h3 { margin:7px 0 14px; font-size:13px; }.footer-nav { display:flex; flex
 .admin-preview-empty-media strong { color:#1e293b; font-size:13px; }
 .admin-preview-empty-media p { margin:0; font-size:11px; color:#64748b; max-width:380px; }
 
+/* Social Share Icons */
+.social-share-wrap { position:relative; display:inline-flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.social-share-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; }
+.social-share-buttons { display:inline-flex; align-items:center; gap:7px; }
+.social-share-btn { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; border:0; cursor:pointer; color:#fff; flex-shrink:0; padding:0; transition:transform .2s ease,box-shadow .2s ease,filter .2s ease; }
+.social-share-btn:hover { transform:translateY(-2px); }
+.social-share-btn:active { transform:translateY(0); }
+.share-wa { background:#25D366; box-shadow:0 3px 10px rgba(37,211,102,.3); }
+.share-wa:hover { background:#1eb956; box-shadow:0 5px 14px rgba(37,211,102,.45); }
+.share-fb { background:#1877F2; box-shadow:0 3px 10px rgba(24,119,242,.3); }
+.share-fb:hover { background:#1467d2; box-shadow:0 5px 14px rgba(24,119,242,.45); }
+.share-ig { background:linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); box-shadow:0 3px 10px rgba(220,39,67,.3); }
+.share-ig:hover { filter:brightness(1.1); box-shadow:0 5px 14px rgba(220,39,67,.45); }
+.share-copy { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; box-shadow:0 2px 6px rgba(15,23,42,.05); }
+.share-copy:hover { background:#e2e8f0; color:#1e293b; }
+.share-copy.copied { background:#dcfce7; color:#15803d; border-color:#86efac; }
+.social-share-toast { position:absolute; top:-34px; right:0; background:#0f172a; color:#fff; font-size:10px; font-weight:700; padding:5px 10px; border-radius:6px; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,.25); pointer-events:none; z-index:10; }
+.social-share-toast::after { content:""; position:absolute; bottom:-4px; right:14px; width:8px; height:8px; background:#0f172a; transform:rotate(45deg); }
+
+
 
