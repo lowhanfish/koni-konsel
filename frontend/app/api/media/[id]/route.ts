@@ -9,12 +9,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const media = await prisma.mediaFile.findUnique({ where: { id } });
   if (!media) return NextResponse.json({ error: "File tidak ditemukan" }, { status: 404 });
   const disposition = request.nextUrl.searchParams.get("download") === "1" ? "attachment" : "inline";
-  const safeName = media.originalName.replace(/[\r\n"]/g, "_");
+  // HTTP headers require ASCII here; preserve the Unicode name in filename*.
+  const safeName = media.originalName.replace(/[^\x20-\x7e]|["\\]/g, "_");
+  const encodedName = encodeURIComponent(media.originalName).replace(/[!'()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
   return new Response(new Uint8Array(media.data), {
     headers: {
       "Content-Type": media.mimeType,
       "Content-Length": String(media.size),
-      "Content-Disposition": `${disposition}; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(media.originalName)}`,
+      "Content-Disposition": `${disposition}; filename="${safeName}"; filename*=UTF-8''${encodedName}`,
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
     },

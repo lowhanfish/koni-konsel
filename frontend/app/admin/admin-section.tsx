@@ -130,7 +130,8 @@ export function AdminSection({ section }: { section: SectionKey }) {
       showToast(`${config.title} belum terhubung ke modul backend khusus`);
       return;
     }
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const isNews = section === "berita";
     const isAnnouncement = section === "pengumuman";
     const isGallery = section === "galeri";
@@ -235,9 +236,11 @@ export function AdminSection({ section }: { section: SectionKey }) {
       }
       if (editing) await updateContent.mutateAsync({ id: editing.id, input: finalInput });
       else await createContent.mutateAsync({ kind, ...finalInput });
+      // Once saved, this file belongs to the content and must not be rolled back.
+      uploadedFileId = undefined;
       const replacedFileId = selectedImage ? editingImage?.imageFileId : selectedAttachment || removeAttachment ? editingAttachment?.attachmentFileId : null;
       if (replacedFileId) void deleteMedia(replacedFileId).catch(() => undefined);
-      event.currentTarget.reset();
+      formElement.reset();
       setModal(false);
       setEditing(null);
       showToast(`${config.title} berhasil ${editing ? "diperbarui" : "disimpan"}`);
