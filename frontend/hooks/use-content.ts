@@ -17,9 +17,54 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export type UploadedMedia = { id: string; name: string; mimeType: string; size: number; url: string };
 
+async function compressImageFile(file: File, maxDimension = 1200, quality = 0.82): Promise<File> {
+  if (typeof window === "undefined" || !file.type.startsWith("image/") || file.type === "image/gif" || file.type === "image/svg+xml") {
+    return file;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(file);
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob || blob.size >= file.size) return resolve(file);
+          const baseName = file.name.replace(/\.[^/.]+$/, "");
+          const newFile = new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
+          resolve(newFile);
+        },
+        "image/jpeg",
+        quality,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 export async function uploadMedia(file: File, purpose: "image" | "attachment") {
+  const fileToUpload = purpose === "image" ? await compressImageFile(file) : file;
   const body = new FormData();
-  body.set("file", file);
+  body.set("file", fileToUpload);
   body.set("purpose", purpose);
   const response = await fetch("/api/media", { method: "POST", body });
   const result = (await response.json().catch(() => null)) as { data?: UploadedMedia; error?: string } | null;

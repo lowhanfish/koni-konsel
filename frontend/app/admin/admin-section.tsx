@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, CalendarDays, Camera, Check, CircleHelp, Download,
   AlertTriangle, Bell, Dumbbell, ExternalLink, Eye, GalleryHorizontal, LayoutDashboard, Mail, Menu,
-  Newspaper, Paperclip, Pencil, Play, Plus, Search, Settings, Trash2, Trophy, Upload, Users, Video, X,
+  Newspaper, Paperclip, Pencil, Play, Plus, Search, Settings, Trash2, Trophy, Upload, Users, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { deleteMedia, uploadMedia, useContentItem, useContentList, useCreateContent, useDeleteContent, useUpdateContent } from "@/hooks/use-content";
